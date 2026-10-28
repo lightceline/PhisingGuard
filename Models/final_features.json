@@ -1,0 +1,39 @@
+{
+  "k": 20,
+  "features": [
+    "num_slashes",
+    "num_subdomains",
+    "num_query_params",
+    "path_length",
+    "path_depth",
+    "has_https",
+    "num_dots",
+    "num_hyphens",
+    "digit_ratio",
+    "num_digits",
+    "vowel_ratio",
+    "url_length",
+    "url_entropy",
+    "domain_length",
+    "consonant_ratio",
+    "avg_token_length",
+    "special_char_ratio",
+    "longest_token_length",
+    "has_ip_address",
+    "domain_entropy"
+  ],
+  "dropped": [
+    "num_underscores",
+    "num_at",
+    "num_question_marks",
+    "num_equals",
+    "num_ampersands",
+    "num_percent",
+    "letter_ratio",
+    "is_suspicious_tld",
+    "has_port",
+    "has_fragment",
+    "is_shortened_url",
+    "has_suspicious_word"
+  ]
+}
