@@ -1,3 +1,5 @@
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
 /Data/Features/dataset1_features.csv filter=lfs diff=lfs merge=lfs -text
 /Data/Features/merged_features.csv filter=lfs diff=lfs merge=lfs -text
 /Data/Processed/merged_dataset.csv filter=lfs diff=lfs merge=lfs -text

@@ -1,25 +1,3 @@
-k,model,accuracy,macro_f1,train_time
-5,lightgbm,0.8157,0.6988,1.6
-5,xgboost,0.8182,0.7031,2.2
-5,decision_tree,0.8175,0.7019,0.4
-8,lightgbm,0.8466,0.7822,1.8
-8,xgboost,0.8489,0.7857,2.3
-8,decision_tree,0.8508,0.7906,0.6
-10,lightgbm,0.8671,0.824,1.6
-10,xgboost,0.8733,0.8327,2.1
-10,decision_tree,0.869,0.8249,0.9
-12,lightgbm,0.8765,0.8343,1.9
-12,xgboost,0.8834,0.8446,2.2
-12,decision_tree,0.8721,0.8254,1.4
-15,lightgbm,0.8831,0.8441,1.9
-15,xgboost,0.8912,0.8558,2.5
-15,decision_tree,0.8771,0.8333,2.9
-20,lightgbm,0.8955,0.8591,2.5
-20,xgboost,0.9075,0.8763,2.7
-20,decision_tree,0.8808,0.8383,3.3
-25,lightgbm,0.8976,0.8619,2.4
-25,xgboost,0.9076,0.8766,2.8
-25,decision_tree,0.8792,0.8349,4.0
-32,lightgbm,0.8987,0.8642,2.8
-32,xgboost,0.908,0.877,3.6
-32,decision_tree,0.8793,0.8365,5.7
+version https://git-lfs.github.com/spec/v1
+oid sha256:756e6b415385ce1fd522be969f544a9984543a7334091cb8e5ff4bc8cbf9b42a
+size 804
