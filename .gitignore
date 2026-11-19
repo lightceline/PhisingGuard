@@ -1,0 +1,9 @@
+# Backup snapshots (tránh đẩy nhầm ~1 GB lên Git LFS)
+Backup/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/

@@ -1,11 +1,10 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
 *.csv filter=lfs diff=lfs merge=lfs -text
-/Data/Features/dataset1_features.csv filter=lfs diff=lfs merge=lfs -text
 /Data/Features/merged_features.csv filter=lfs diff=lfs merge=lfs -text
 /Data/Processed/merged_dataset.csv filter=lfs diff=lfs merge=lfs -text
-/Models/Train_Test/dataset1/train.csv filter=lfs diff=lfs merge=lfs -text
-/Models/dataset1/bagging.pkl filter=lfs diff=lfs merge=lfs -text
-/Models/dataset1/extra_trees.pkl filter=lfs diff=lfs merge=lfs -text
-/Models/dataset1/knn.pkl filter=lfs diff=lfs merge=lfs -text
-/Models/dataset1/random_forest.pkl filter=lfs diff=lfs merge=lfs -text
+/Models/Train_Test/merged/train.csv filter=lfs diff=lfs merge=lfs -text
+/Models/merged/bagging.pkl filter=lfs diff=lfs merge=lfs -text
+/Models/merged/extra_trees.pkl filter=lfs diff=lfs merge=lfs -text
+/Models/merged/knn.pkl filter=lfs diff=lfs merge=lfs -text
+/Models/merged/random_forest.pkl filter=lfs diff=lfs merge=lfs -text
 /Reports/shap_values_hard_cases.pkl filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="card">
+    <header>
+      <span class="logo" id="logo"></span>
+      <span class="brand">Phishing Guard</span>
+    </header>
+
+    <div id="url" class="urlbox"></div>
+
+    <section id="verdict" class="verdict">
+      <div class="vtop">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div id="rel" class="rel"></div>
+      </div>
+      <div id="vtitle" class="vtitle">Đang kiểm tra…</div>
+      <div id="vsub" class="vsub"></div>
+    </section>
+
+    <ul id="reasons" class="reasons"></ul>
+    <div id="details" class="details" hidden></div>
+
+    <div class="actions">
+      <button id="btn-detail" class="btn" hidden>Xem chi tiết</button>
+      <button id="btn-leave" class="btn" hidden>Rời trang này</button>
+    </div>
+    <div class="note">Kết quả chỉ mang tính tham khảo.</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

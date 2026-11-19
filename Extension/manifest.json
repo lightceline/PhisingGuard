@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "PhishingGuard",
+  "version": "0.1.0",
+  "description": "Cảnh báo URL lừa đảo theo thời gian thực bằng mô hình học máy có giải thích (SHAP).",
+  "permissions": ["tabs", "storage", "scripting"],
+  "host_permissions": ["http://127.0.0.1:8000/*", "<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "PhishingGuard" }
+}
