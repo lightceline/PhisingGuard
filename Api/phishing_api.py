@@ -73,7 +73,7 @@ VN_TRUSTED_DOMAINS = {
     "vietcombank.com.vn", "techcombank.com", "mbbank.com.vn", "bidv.com.vn",
     "agribank.com.vn", "acb.com.vn", "vpbank.com.vn", "tpb.vn",
     "sacombank.com.vn", "vib.com.vn", "hdbank.com.vn", "vietinbank.vn",
-    "chinhphu.vn", "dichvucong.gov.vn",
+    "chinhphu.vn", "dichvucong.gov.vn", "fptplay.vn"
 }
 
 # Danh sách dự phòng nếu không tìm thấy file Data/Raw/top-1m.csv
@@ -93,8 +93,9 @@ def _is_abused_platform(domain: str) -> bool:
 
 
 def _load_trusted_domains():
-    """Đọc Top TRANCO_TOP_N từ Data/Raw/top-1m.csv (lọc bỏ nền tảng hay bị abuse) + gộp VN_TRUSTED_DOMAINS."""
+    """Đọc Top TRANCO_TOP_N từ tranco_top20k.csv / Data/Raw/top-1m.csv (lọc bỏ nền tảng hay bị abuse) + gộp VN_TRUSTED_DOMAINS."""
     candidates = [
+        os.path.join(API_DIR, "tranco_top20k.csv"),
         os.path.join(API_DIR, "..", "Data", "Raw", "top-1m.csv"),
         os.path.join(API_DIR, "top-1m.csv"),
     ]
@@ -105,7 +106,7 @@ def _load_trusted_domains():
         domains.update(FALLBACK_GLOBAL_DOMAINS)
         return domains, False
 
-    with open(tranco_path, "r", encoding="utf-8") as f:
+    with open(tranco_path, "r", encoding="utf-8-sig") as f:
         for line in islice(f, TRANCO_TOP_N):
             parts = line.strip().split(",", 1)
             if len(parts) == 2:

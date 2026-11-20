@@ -1,0 +1,11 @@
+services:
+  phishing-api:
+    build:
+      context: ./Api
+      dockerfile: Dockerfile
+    container_name: phishingguard-api
+    ports:
+      - "8000:7860"
+    environment:
+      - PORT=7860
+    restart: unless-stopped
