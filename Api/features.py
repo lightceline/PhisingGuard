@@ -1,29 +1,151 @@
-"""Trích 32 feature từ URL. Sao chép nguyên văn từ feature_engineering.ipynb.
+"""Trích 32 feature từ URL (đã gia cố chống tấn công đối kháng - Adversarial Defense).
 
-URL được chuẩn hoá bằng normalize_url() TRƯỚC khi tính feature — hàm này PHẢI giống hệt
-normalize_url trong src/analysis.ipynb (bước làm sạch dữ liệu train).
+URL được chuẩn hoá bằng normalize_url() TRƯỚC khi tính feature:
+1. Bóc tách Open Redirect nếu tham số query chứa URL chuyển hướng (vd: ?q=http://evil.tk).
+2. Tách bỏ phần userinfo@ trong authority (chống kỹ thuật http://facebook.com:80@evil.tk).
+3. Nhận diện và giải mã tên miền IDN Punycode (xn--) & ký tự đồng dạng Cyrillic / Greek (Homograph).
+4. Bỏ scheme + 'www.', hạ chữ thường phần host, dùng urlparse().hostname để loại bỏ ':port'.
+5. Giải mã Percent-Encoding (unquote) và gộp dấu '//' thừa trên đường dẫn.
+6. Quét từ khoá nhạy cảm kết hợp giải mã Leetspeak + Cyrillic Homoglyphs.
 """
 import re
 import math
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
-# ── Chuẩn hoá URL (giống hệt analysis.ipynb) ──
-# Bỏ scheme + 'www.', hạ chữ thường phần host, gắn lại scheme cố định 'http://'
-# -> scheme / 'www.' không còn ảnh hưởng tới feature (tránh shortcut learning).
+# ── Chuẩn hoá URL & Phòng thủ Cú pháp (Input Canonicalization) ──
 _SCHEME_RE = re.compile(r'^(?:https?|ftp)://', re.IGNORECASE)
 _WWW_RE    = re.compile(r'^www\d*\.', re.IGNORECASE)
 
+# Bảng ánh xạ Leetspeak + Ký tự đồng dạng Cyrillic/Greek (Homoglyphs) sang chữ Latin chuẩn
+_HOMOGLYPH_LEET_MAP = str.maketrans({
+    # Leetspeak digits & symbols
+    '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '$': 's', '@': 'a',
+    # Cyrillic small & capital homoglyphs (U+0400 - U+04FF)
+    'а': 'a', 'А': 'a', 'в': 'b', 'В': 'b', 'е': 'e', 'Е': 'e', 'є': 'e',
+    'і': 'i', 'І': 'i', 'ї': 'i', 'Ї': 'i', 'ј': 'j', 'Ј': 'j', 'к': 'k',
+    'К': 'k', 'м': 'm', 'М': 'm', 'н': 'h', 'Н': 'h', 'о': 'o', 'О': 'o',
+    'р': 'p', 'Р': 'p', 'с': 'c', 'С': 'c', 'т': 't', 'Т': 't', 'у': 'y',
+    'У': 'y', 'х': 'x', 'Х': 'x', 'ѕ': 's', 'Ѕ': 's', 'ԁ': 'd', 'ԛ': 'q',
+    'ԝ': 'w', 'ѵ': 'v', 'ґ': 'r',
+    # Greek homoglyphs
+    'α': 'a', 'β': 'b', 'ε': 'e', 'ι': 'i', 'κ': 'k', 'ν': 'n', 'ο': 'o',
+    'ρ': 'p', 'τ': 't', 'υ': 'y', 'χ': 'x',
+})
+
+_CYRILLIC_OR_NON_ASCII_RE = re.compile(r'[^\x00-\x7f]')
+_PUNYCODE_LABEL_RE        = re.compile(r'(?:^|\.)xn--[a-z0-9-]+', re.IGNORECASE)
+
+_EMBED_URL_RE = re.compile(
+    r'^(?:(?:https?|ftp)://|//[a-z0-9.-]+\.[a-z]{2,}|[a-z0-9.-]+\.(?:tk|ml|ga|cf|gq|xyz|top|club|work|click|link|online|site|live)(?:/|$))',
+    re.IGNORECASE
+)
+
+
+def _parse(url):
+    try:    return urlparse(str(url))
+    except: return urlparse('')
+
+
+def decode_idn_hostname(host: str) -> str:
+    """Giải mã từng nhãn tên miền dạng Punycode (xn--...) về Unicode để kiểm tra ký tự Cyrillic/Homograph."""
+    if not host:
+        return ''
+    out = []
+    for label in host.split('.'):
+        if label.lower().startswith('xn--'):
+            try:
+                out.append(label.encode('ascii').decode('idna'))
+            except Exception:
+                out.append(label)
+        else:
+            out.append(label)
+    return '.'.join(out)
+
+
+def has_adversarial_userinfo(raw_url: str) -> bool:
+    """Kiểm tra xem URL gốc có chứa thành phần userinfo@ trong authority hay không (vd: http://facebook.com:80@evil.tk)."""
+    u = _SCHEME_RE.sub('', str(raw_url).strip())
+    m = re.match(r'^([^/?#]*)', u)
+    authority = m.group(1) if m else ''
+    return '@' in authority
+
+
+def extract_nested_redirect_url(raw_url: str):
+    """Nếu tham số query của URL chứa một URL đích (Open Redirect như ?q=http://..., ?url=..., ?u=...),
+    trả về URL đích đã bóc tách; ngược lại trả về None.
+    """
+    try:
+        u = _SCHEME_RE.sub('', str(raw_url).strip())
+        p = _parse('http://' + u)
+        if not p.query:
+            return None
+        qs = parse_qs(p.query)
+        for _, vals in qs.items():
+            for v in vals:
+                v_unq = unquote(unquote(v)).strip()
+                if _EMBED_URL_RE.match(v_unq):
+                    return v_unq.lstrip('/')
+        q_unq = unquote(unquote(p.query))
+        m = re.search(r'((?:https?|ftp)://[^\s&#]+)', q_unq, re.IGNORECASE)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
+def has_idn_homograph(raw_url: str) -> bool:
+    """Phát hiện tấn công giả mạo tên miền bằng ký tự Cyrillic / Non-ASCII hoặc IDN Punycode (xn--).
+    Hỗ trợ cả 2 trường hợp:
+    1. URL chứa trực tiếp ký tự Cyrillic/Unicode trong host (vd: http://pаypal.com/).
+    2. URL đã bị trình duyệt Chrome chuyển sang dạng Punycode (vd: http://xn--pypal-4ve.com/).
+    """
+    u = str(raw_url).strip()
+    nested = extract_nested_redirect_url(u)
+    if nested is not None:
+        u = nested
+    u = _SCHEME_RE.sub('', u)
+    m = re.match(r'^([^/?#]*)', u)
+    authority = m.group(1) if m else ''
+    if '@' in authority:
+        authority = authority.rsplit('@', 1)[-1]
+    host = authority.split(':')[0].lower().rstrip('.')
+    if not host:
+        return False
+    # Kiểm tra trực tiếp ký tự ngoài ASCII (Cyrillic/Greek/Unicode) hoặc nhãn Punycode xn--
+    if _CYRILLIC_OR_NON_ASCII_RE.search(host) or _PUNYCODE_LABEL_RE.search(host):
+        return True
+    decoded_host = decode_idn_hostname(host)
+    return bool(_CYRILLIC_OR_NON_ASCII_RE.search(decoded_host))
+
+
 def normalize_url(url):
     u = str(url).strip()
+    # Bóc tách URL đích nếu phát hiện Open Redirect trong query
+    nested = extract_nested_redirect_url(u)
+    if nested is not None:
+        u = nested
+
     u = _SCHEME_RE.sub('', u)          # bỏ http:// | https:// | ftp://
-    u = _WWW_RE.sub('', u)             # bỏ www. | www2. ...
     m = re.match(r'^([^/?#]*)(.*)$', u, flags=re.DOTALL)
-    host, rest = m.group(1).lower(), m.group(2)
-    # Chuẩn hoá dấu '/' ở gốc domain: 'domain.com' và 'domain.com/' cùng thành 'http://domain.com/'
-    # (tránh model học shortcut num_slashes == 2 -> độc hại do khác biệt nguồn crawl)
-    if not rest or rest[0] in ('?', '#'):
-        rest = '/' + rest
-    return 'http://' + host + rest
+    authority, rest = m.group(1), m.group(2)
+
+    # Tách bỏ userinfo@ nếu kẻ tấn công chèn user:pass@host
+    if '@' in authority:
+        authority = authority.rsplit('@', 1)[-1]
+
+    authority = _WWW_RE.sub('', authority).lower()   # bỏ www. | www2. ...
+
+    # Giải mã percent-encoding (%xx) trên phần path & query
+    rest_unq = unquote(unquote(rest))
+    # Tách riêng path và query/fragment để chỉ gộp dấu '//' thừa trên path
+    m_rest = re.match(r'^([^?#]*)(.*)$', rest_unq, flags=re.DOTALL)
+    path_part, qf_part = m_rest.group(1), m_rest.group(2)
+    path_part = re.sub(r'/+', '/', path_part)
+    if not path_part:
+        path_part = '/'
+    return 'http://' + authority + path_part + qf_part
+
 
 # ── Constants ──
 SUSPICIOUS_WORDS = [
@@ -42,13 +164,11 @@ URL_SHORTENERS = {
 VOWELS     = set('aeiouAEIOU')
 CONSONANTS = set('bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ')
 
-# ── Helper ──
-def _parse(url):
-    try:    return urlparse(str(url))
-    except: return urlparse('')
 
+# ── Helper ──
 def _domain(url):
-    return _parse(url).netloc.split(':')[0].lower()
+    return (_parse(url).hostname or '').lower()
+
 
 def _shannon(s):
     if not s: return 0.0
@@ -56,6 +176,7 @@ def _shannon(s):
     for c in s: freq[c] = freq.get(c, 0) + 1
     n = len(s)
     return -sum((f/n) * math.log2(f/n) for f in freq.values())
+
 
 #   LEXICAL FEATURES (20 features)
 # Đã tách num_hyphens thành domain_hyphens và path_hyphens
@@ -100,7 +221,10 @@ def f_is_suspicious_tld(u):
     return int(parts[-1] in SUSPICIOUS_TLDS) if parts else 0
 
 def f_has_port(u):
-    return int(':' in _parse(u).netloc)
+    try:
+        return int(_parse(u).port is not None)
+    except ValueError:
+        return int(':' in _parse(u).netloc.rsplit('@', 1)[-1])
 
 def f_path_depth(u):
     parts = [p for p in _parse(u).path.split('/') if p]
@@ -114,11 +238,15 @@ def f_has_fragment(u):
     return int(bool(_parse(u).fragment))
 
 def f_is_shortened_url(u):
-    d = re.sub(r'^www\d*\.', '', _domain(u))   # lstrip('www.') cũ xoá nhầm ký tự w/. đầu domain
+    d = re.sub(r'^www\d*\.', '', _domain(u))
     return int(d in URL_SHORTENERS)
 
 def f_has_suspicious_word(u):
-    return int(any(w in str(u).lower() for w in SUSPICIOUS_WORDS))
+    u_low = str(u).lower()
+    # Giải mã cả Punycode xn-- trên domain trước khi dịch Cyrillic/Leetspeak
+    d_decoded = decode_idn_hostname(_domain(u))
+    combined = (u_low + ' ' + d_decoded).translate(_HOMOGLYPH_LEET_MAP)
+    return int(any(w in u_low or w in combined for w in SUSPICIOUS_WORDS))
 
 # STATISTICAL FEATURES (5 features)
 

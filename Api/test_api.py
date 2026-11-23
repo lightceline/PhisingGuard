@@ -83,3 +83,25 @@ for u in non_tranco_benign:
     wl = "WL" if r.get("whitelisted") else "ML"
     print(f"[{wl}] {r['malicious_score']:.4f}  {r['zone']:6s}  {u}")
 
+# 6. Kiểm tra chống tấn công đối kháng (Adversarial Evasion & Defense A1 - A8: Userinfo, Open Redirect, Slug, Query, %xx, Leetspeak, Cyrillic & Punycode)
+print("\n── 5. Adversarial Evasion & Defense tests (A1 - A8) ──")
+adv_tests = [
+    ("A1 Userinfo+Port Spoof", "http://facebook.com:80@vietcombank-secure-verify.xyz/login/account"),
+    ("A2 Trusted Open Redirect", "https://www.google.com/url?q=http://vietcombank-secure-verify.xyz/login/account"),
+    ("A3 Benign SEO Slug Stuffing", "http://vietcombank-secure-verify.xyz/login/account/tin-tuc-cong-nghe-cap-nhat-he-thong-bao-mat-moi-2026"),
+    ("A4 Query & Vowel Dilution", "http://momo-wallet-authenticate.top/verify?page=home"),
+    ("A5 URL Percent-Encoding", "http://vietcombank-secure-verify.xyz/%6c%6f%67%69%6e/%61%63%63%6f%75%6e%74"),
+    ("A6 Combined Slug + Query", "http://vietcombank-secure-verify.xyz/login/account/bai-viet-huong-dan-su-dung-dich-vu-truc-tuyen-2026?id=1"),
+    ("A7 Leetspeak Keyword Spoof", "http://paypa1-secure-vcb.xyz/l0g1n/ver1fy"),
+    ("A8a Raw Cyrillic Homograph", "http://p\u0430ypal.com/l\u043eg\u0456n"),
+    ("A8b IDN Punycode Homograph", "http://xn--pypal-4ve.com/"),
+]
+all_adv_caught = True
+for name, u in adv_tests:
+    r = requests.post(API, json={"url": u}).json()
+    caught = r["zone"] in ("red", "yellow") and not r.get("whitelisted", False)
+    if not caught:
+        all_adv_caught = False
+    tag = "CAUGHT" if caught else "BYPASSED!"
+    print(f"[{tag:9s}] {r['malicious_score']:.4f}  {r['zone']:6s}  {name:28s} | {r.get('normalized_url')} <- {u}")
+print("Tất cả kịch bản tấn công đối kháng (kể cả Cyrillic/Punycode) đều bị chặn:", all_adv_caught)

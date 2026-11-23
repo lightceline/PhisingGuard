@@ -8,7 +8,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from features import extract_features, normalize_url, FEATURE_NAMES   # 32 feature, URL đã chuẩn hoá
+from features import (
+    extract_features,
+    normalize_url,
+    FEATURE_NAMES,
+    has_adversarial_userinfo,
+    extract_nested_redirect_url,
+    has_idn_homograph,
+    _parse,
+)
 
 # Đường dẫn tuyệt đối theo vị trí file này -> chạy từ thư mục nào cũng load được
 API_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -119,13 +127,23 @@ def _load_trusted_domains():
 TRUSTED_DOMAINS, TRANCO_LOADED = _load_trusted_domains()
 
 
-def get_trusted_root_domain(norm_url: str):
+def get_trusted_root_domain(norm_url: str, raw_url: str = None):
     """Trả về tên miền gốc (eTLD+1) nếu thuộc TRUSTED_DOMAINS, ngược lại trả về None.
 
-    An toàn trước subdomain giả mạo: 'secure-login.paypal.com.verify-account.tk'
-    có root domain là 'verify-account.tk' -> không khớp 'paypal.com'.
+    An toàn trước:
+    - Subdomain giả mạo: 'secure-login.paypal.com.verify-account.tk' -> root 'verify-account.tk'.
+    - Userinfo+Port spoofing: 'http://facebook.com:80@evil.tk/login' -> từ chối whitelist.
+    - Open Redirect: 'https://www.google.com/url?q=http://evil.tk' -> từ chối whitelist.
+    - Cyrillic / IDN Homograph: 'http://pаypal.com/' hoặc 'http://xn--pypal-4ve.com/' -> từ chối whitelist.
     """
-    host = urlparse(norm_url).netloc.split(":")[0].lower().rstrip(".")
+    check_u = raw_url if raw_url is not None else norm_url
+    if (
+        has_adversarial_userinfo(check_u)
+        or extract_nested_redirect_url(check_u) is not None
+        or has_idn_homograph(check_u)
+    ):
+        return None
+    host = (_parse(norm_url).hostname or "").lower().rstrip(".")
     if not host or host in UNTRUSTED_HOST_EXCEPTIONS:
         return None
     parts = host.split(".")
@@ -174,9 +192,11 @@ def benign_shap(x):
 @app.post("/predict")
 def predict(req: Req):
     norm_url = normalize_url(req.url)
+    has_at_spoof = has_adversarial_userinfo(req.url)
+    has_homograph = has_idn_homograph(req.url)
 
     # Layer 1: Kiểm tra tên miền gốc (eTLD+1) trong danh sách uy tín trước khi chạy ML
-    trusted_root = get_trusted_root_domain(norm_url)
+    trusted_root = get_trusted_root_domain(norm_url, raw_url=req.url)
     if trusted_root is not None:
         return {
             "url": req.url,
@@ -203,6 +223,12 @@ def predict(req: Req):
     proba = model.predict_proba(x)[0]
     mal_score = float(1.0 - proba[BENIGN])
 
+    # Hard Guardrail: nếu URL dùng kỹ thuật giả mạo userinfo@ (http://facebook.com:80@evil.tk)
+    # hoặc giả mạo ký tự đồng dạng Cyrillic / IDN Punycode (http://pаypal.com/ hoặc http://xn--pypal-4ve.com/),
+    # đảm bảo điểm độc hại tối thiểu bằng TAU_HIGH (vùng đỏ)
+    if (has_at_spoof or has_homograph) and mal_score < TAU_HIGH:
+        mal_score = float(TAU_HIGH)
+
     if mal_score >= TAU_HIGH:
         zone = "red"
     elif mal_score >= TAU_LOW:
@@ -213,8 +239,11 @@ def predict(req: Req):
     # Nhãn lớp độc hại: argmax trên các lớp còn lại (chỉ cho vùng đỏ/vàng)
     label = None
     if zone != "green":
-        p = proba.copy(); p[BENIGN] = -1
-        label = CLASSES[int(np.argmax(p))]
+        if has_homograph or has_at_spoof:
+            label = "phishing"
+        else:
+            p = proba.copy(); p[BENIGN] = -1
+            label = CLASSES[int(np.argmax(p))]
 
     # Top 3 feature đẩy điểm về phía "độc hại" (= đẩy P(benign) xuống, nên đổi dấu)
     reasons = []

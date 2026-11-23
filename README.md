@@ -4,12 +4,12 @@ Real-time malicious & phishing URL detection system combining a **2-layer defens
 
 ## Architecture
 
-1. **Layer 1 — Trusted Domain Whitelist (eTLD+1):**
+1. **Layer 1 — Trusted Domain Whitelist (eTLD+1) & Input Canonicalization Guardrails:**
    - Uses **Tranco Top 20,000** (`Api/tranco_top20k.csv`) minus 75 commonly abused hosting/shortener/cloud platforms (`netlify.app`, `github.io`, `vercel.app`, `bit.ly`, `blogspot.*`, `amazonaws.com`, `sites.google.com`, etc.), merged with trusted Vietnamese domains (`19,946` total trusted root domains).
-   - Matches strictly by registrable root domain (eTLD+1) to prevent subdomain spoofing (e.g., `secure-login.paypal.com.verify-account.tk` is **not** whitelisted).
-2. **Layer 2 — Machine Learning + Real-Time SHAP:**
-   - 4-class LightGBM classifier (`benign`, `phishing`, `malware`, `defacement`) trained on `759,323` normalized URLs using **27 SHAP-selected features** (out of 32 lexical, structural, and statistical URL features).
-   - Two-threshold risk zoning (`TAU_LOW = 0.58`, `TAU_HIGH = 0.72`) with `96.08%` precision and `1.02%` benign FPR in the high-risk (`red`) zone on the holdout set.
+   - Matches strictly by registrable root domain (eTLD+1) via `.hostname` and blocks whitelist bypasses via **Open Redirect unwrapping** (`?q=`, `?url=`, `?u=`), **`userinfo@` spoofing prevention** (`http://facebook.com:80@evil.tk`), and **Cyrillic / IDN Punycode (`xn--`) homograph detection**.
+2. **Layer 2 — Adversarially Hardened Machine Learning + Real-Time SHAP:**
+   - 4-class LightGBM classifier (`benign`, `phishing`, `malware`, `defacement`) trained on `544,373` normalized & adversarially augmented URLs using **27 SHAP-selected features** (out of 32 lexical, structural, and statistical URL features, enhanced with multi-pass `%xx` decoding and Leetspeak/Cyrillic homoglyph de-obfuscation).
+   - Reduces average Attack Success Rate (**ASR**) across 7 problem-space adversarial attack families (`7,000` test variants) from **79.7% down to 2.9%** while maintaining `~1%` benign FPR (`TAU_LOW = 0.58`, `TAU_HIGH = 0.72`).
    - Real-time `TreeExplainer` SHAP values translated into human-readable Vietnamese explanations in the Chrome Extension.
 
 ## Project Structure
