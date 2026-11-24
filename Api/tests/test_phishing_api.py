@@ -237,6 +237,10 @@ def test_chat_off_topic_guardrail_refuses_unrelated_queries(monkeypatch):
         ("https có chắc chắn an toàn không", "vi", "concept_url_anatomy"),
         ("defacement là gì", "vi", "concept_threat_classes"),
         ("what is TLD", "en", "concept_ip_and_tld"),
+        ("phishingguard hoạt động như thế nào?", "vi", "system_how_it_works"),
+        ("what is social engineering?", "en", "concept_email_sms_phishing"),
+        ("cách bật xác thực 2 lớp 2FA", "vi", "guide_2fa_password_hygiene"),
+        ("báo cáo trang web lừa đảo ở đâu?", "vi", "guide_report_phishing"),
     ],
 )
 def test_chat_answers_short_url_and_security_concepts(monkeypatch, msg, lang, expected_doc_id):

@@ -169,5 +169,41 @@
     "title_en": "What are Top-Level Domains (TLDs) and Raw IP URLs?",
     "content_vi": "TLD (Top-Level Domain) là phần đuôi cuối cùng của tên miền như '.com', '.vn', '.org'. Một số TLD miễn phí hoặc cực rẻ (.tk, .ml, .ga, .xyz, .top, .click...) thường bị kẻ xấu đăng ký hàng loạt để lừa đảo. Tương tự, việc dùng trực tiếp địa chỉ IP (vd: 'http://192.168.1.50/login') thay vì tên miền đăng ký là dấu hiệu rủi ro rất cao vì các dịch vụ uy tín hầu như không bao giờ làm vậy.",
     "content_en": "A TLD (Top-Level Domain) is the final suffix of a domain such as '.com', '.vn', or '.org'. Low-cost or free TLDs (.tk, .ml, .xyz, .top, .click...) are disproportionately abused in phishing campaigns. Similarly, using a raw IP address (e.g., 'http://185.x.x.x/login') instead of a registered domain is a strong malicious indicator."
+  },
+  {
+    "id": "system_how_it_works",
+    "source": "PhishingGuard Architecture",
+    "keywords": "phishingguard hoạt động như thế nào cơ chế kiến trúc 2 lớp tranco whitelist lightgbm how does phishingguard work architecture",
+    "title_vi": "PhishingGuard hoạt động như thế nào?",
+    "title_en": "How does PhishingGuard work?",
+    "content_vi": "PhishingGuard dùng kiến trúc phòng thủ 2 lớp: Lớp 1 kiểm tra tên miền gốc (eTLD+1) trong Tranco Top 20.000 + trang uy tín Việt Nam (đã loại trừ 75+ nền tảng hay bị lợi dụng như netlify.app, github.io, bit.ly) kết hợp chặn Userinfo@, Open Redirect và IDN Homograph. Lớp 2 trích xuất 27 đặc trưng URL tối ưu theo SHAP đưa vào mô hình LightGBM đã huấn luyện chống tấn công đối kháng, sau đó giải thích trực tiếp bằng TreeSHAP.",
+    "content_en": "PhishingGuard uses a 2-layer defense architecture: Layer 1 checks the registrable root domain (eTLD+1) against Tranco Top 20,000 + trusted local domains (excluding 75+ abused hosts like netlify.app, github.io, bit.ly) plus guardrails for Userinfo@, Open Redirect, and IDN Homograph. Layer 2 extracts 27 SHAP-selected URL features into an adversarially hardened LightGBM classifier and explains alerts via real-time TreeSHAP."
+  },
+  {
+    "id": "concept_email_sms_phishing",
+    "source": "NCSC UK & CISA",
+    "keywords": "email lừa đảo tin nhắn sms smishing social engineering kỹ nghệ xã hội phòng tránh dấu hiệu giả mạo scam",
+    "title_vi": "Cách nhận biết Email/SMS lừa đảo & Kỹ nghệ xã hội (Social Engineering)",
+    "title_en": "Spotting Phishing Emails, SMS (Smishing), and Social Engineering",
+    "content_vi": "Kẻ tấn công thường dùng kỹ nghệ xã hội (Social Engineering) để tạo cảm giác khẩn cấp ('tài khoản sắp bị khóa trong 24h', 'nhận thưởng', 'giao hàng thất bại'). Dấu hiệu nhận biết: 1) Yêu cầu bấm link lạ hoặc nhập mật khẩu/OTP gấp. 2) Địa chỉ gửi hoặc tên miền gốc không khớp tổ chức thật. 3) Dùng link rút gọn (bit.ly) hoặc tên miền miễn phí. Luôn tự mở app/website chính thức để kiểm tra thay vì bấm link trong tin nhắn.",
+    "content_en": "Attackers use Social Engineering to create artificial urgency ('account locked in 24h', 'prize claim', 'failed delivery'). Red flags include: 1) Urgent requests to click links or enter passwords/OTPs. 2) Mismatched sender or root domain. 3) Shortened URLs or cheap TLDs. Always verify by opening the official app or typing the website manually."
+  },
+  {
+    "id": "guide_2fa_password_hygiene",
+    "source": "NCSC UK & NIST",
+    "keywords": "bật 2fa xác thực 2 lớp authenticator passkey quản lý mật khẩu bảo vệ tài khoản password manager two factor",
+    "title_vi": "Cách bật xác thực 2 lớp (2FA) và đặt mật khẩu an toàn",
+    "title_en": "How to enable 2FA and maintain strong password hygiene",
+    "content_vi": "1) Ưu tiên dùng ứng dụng tạo mã (Google Authenticator, Microsoft Authenticator) hoặc Passkey/khóa bảo mật thay vì chỉ nhận SMS OTP. 2) Không dùng chung một mật khẩu cho nhiều tài khoản (đặc biệt là email chính và ngân hàng). 3) Dùng trình quản lý mật khẩu (Bitwarden, 1Password, Chrome Password Manager) — trình quản lý mật khẩu sẽ KHÔNG tự động điền mật khẩu nếu tên miền là trang giả mạo!",
+    "content_en": "1) Prefer Authenticator apps (Google/Microsoft Authenticator) or Passkeys over SMS OTP alone. 2) Never reuse passwords across critical accounts (email, banking). 3) Use a password manager (Bitwarden, 1Password, Chrome)—it will refuse to autofill credentials on spoofed phishing domains!"
+  },
+  {
+    "id": "guide_report_phishing",
+    "source": "VNCERT & Google Safe Browsing",
+    "keywords": "báo cáo trang web lừa đảo report phishing safe browsing phishtank vncert ncsc tố cáo",
+    "title_vi": "Cách báo cáo (Report) một trang web lừa đảo",
+    "title_en": "How to report a phishing website",
+    "content_vi": "Bạn có thể giúp bảo vệ cộng đồng bằng cách gửi URL lừa đảo tới: 1) Google Safe Browsing (safebrowsing.google.com/safebrowsing/report_phish) để Chrome cảnh báo toàn cầu. 2) Cổng cảnh báo an toàn thông tin Việt Nam (canhbao.ncsc.gov.vn) của Cục An toàn thông tin / VNCERT. 3) PhishTank (phishtank.org) hoặc chuyển tiếp email lừa đảo tới tổ chức bị giả mạo.",
+    "content_en": "You can help protect others by reporting phishing URLs to: 1) Google Safe Browsing (safebrowsing.google.com/safebrowsing/report_phish) to block the site in Chrome globally. 2) Your national CERT (e.g., canhbao.ncsc.gov.vn in Vietnam, report@phishing.gov.uk in the UK). 3) PhishTank (phishtank.org) or the impersonated brand's official security team."
   }
 ]
