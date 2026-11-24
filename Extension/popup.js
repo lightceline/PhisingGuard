@@ -274,36 +274,447 @@ const FEATURE_INFO = {
     label: "Tên miền uy tín (Layer 1)",
     short: (v) => `Tên miền ${v} nằm trong danh sách trang web uy tín.`,
     detail: (v) => `Tên miền gốc "${v}" thuộc danh sách các trang web phổ biến và đáng tin cậy (Tranco Top 20.000 đã lọc bỏ các nền tảng hay bị lợi dụng & bổ sung trang uy tín tại Việt Nam).`
+  },
+  adversarial_userinfo: {
+    label: "Giả mạo địa chỉ bằng ký tự \"@\" (Guardrail)",
+    short: () => "Link chèn ký tự \"@\" trước tên miền để đánh lừa địa chỉ thật.",
+    detail: () => "Hệ thống phát hiện kỹ thuật userinfo@ (ví dụ: http://facebook.com:80@evil.tk). Trình duyệt sẽ bỏ qua phần trước dấu \"@\" và đưa bạn tới máy chủ đứng sau — đây là chiêu giả mạo thương hiệu rất nguy hiểm."
+  },
+  idn_homograph: {
+    label: "Tên miền ký tự đồng dạng / Punycode (Guardrail)",
+    short: () => "Tên miền chứa ký tự đồng dạng (Cyrillic/IDN) có thể dùng để giả mạo thương hiệu.",
+    detail: () => "Tên miền chứa ký tự ngoài bảng ASCII hoặc mã hóa Punycode (xn--...). Kẻ tấn công thường thay chữ Latin bằng ký tự Cyrillic giống hệt về mặt hiển thị (như pаypal.com) để đánh lừa mắt người dùng."
   }
 };
 
-const TITLE = { red: "Nguy cơ cao", yellow: "Đáng ngờ", green: "Có vẻ an toàn" };
-const SUB = {
-  yellow: "Link này có một vài dấu hiệu đáng ngờ. Hãy cẩn thận.",
-  green: "Chưa thấy dấu hiệu đáng ngờ trong link này."
+const FEATURE_INFO_EN = {
+  num_subdomains: {
+    label: "Subdomain count",
+    short: (v, dir) => dir === "safe"
+      ? "Clean domain structure with no unusual subdomains."
+      : `Domain contains ${n(v)} subdomains, often used to spoof trusted sites.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Detected ${n(v)} subdomains. The domain structure is concise with no signs of brand spoofing.`
+      : `Detected ${n(v)} subdomains. Attackers often chain multiple subdomains (e.g., login.paypal.com.fake.tk) to hide the real root domain.`
+  },
+  domain_entropy: {
+    label: "Domain randomness (entropy)",
+    short: (v, dir) => dir === "safe"
+      ? "Domain name is readable and looks natural."
+      : "Domain looks random and unlike a familiar brand.",
+    detail: (v, dir) => dir === "safe"
+      ? `Domain Shannon entropy is ${n(v)}, consistent with legitimate brand names.`
+      : `Domain Shannon entropy is ${n(v)}. Phishing or auto-generated domains often contain irregular character sequences.`
+  },
+  url_entropy: {
+    label: "URL randomness (entropy)",
+    short: (v, dir) => dir === "safe"
+      ? "URL structure is clean and readable."
+      : "URL contains complex, noisy character patterns.",
+    detail: (v, dir) => dir === "safe"
+      ? `Overall URL entropy is ${n(v)}, within the normal range for benign pages.`
+      : `Overall URL entropy is ${n(v)}, indicating obfuscated or randomly generated segments common in malicious links.`
+  },
+  url_length: {
+    label: "Total URL length",
+    short: (v, dir) => dir === "safe"
+      ? "Short URL with no signs of obfuscation."
+      : `Unusually long URL (${n(v)} chars), which can conceal the true destination.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Total URL length is ${n(v)} characters — short and easy to inspect.`
+      : `URL is ${n(v)} characters long. Attackers pad URLs to push the real domain out of the browser address bar.`
+  },
+  path_length: {
+    label: "Path length",
+    short: (v, dir) => dir === "safe"
+      ? "Short path with no suspicious padding."
+      : `Long URL path (${n(v)} chars) that may hide deceptive parameters.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Path length is ${n(v)} characters, simple and easy to verify.`
+      : `Path length is ${n(v)} characters. Excessively long paths frequently appear in credential-harvesting or redirect links.`
+  },
+  path_depth: {
+    label: "Path directory depth",
+    short: (v, dir) => dir === "safe"
+      ? "Normal directory depth in the URL path."
+      : `Deeply nested path (${n(v)} levels), deeper than typical pages.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Path has ${n(v)} directory levels, typical for standard websites.`
+      : `Path spans ${n(v)} directory levels. Compromised or phishing pages are often buried inside nested subdirectories.`
+  },
+  num_slashes: {
+    label: "Slash \"/\" count",
+    short: (v, dir) => dir === "safe"
+      ? "Normal URL segmentation."
+      : `URL is split into many segments (${n(v)} slashes).`,
+    detail: (v, dir) => dir === "safe"
+      ? `URL contains ${n(v)} slashes, matching normal path structure.`
+      : `URL contains ${n(v)} slashes, which is often associated with nested paths or chained redirects.`
+  },
+  domain_hyphens: {
+    label: "Hyphens \"-\" in domain",
+    short: (v, dir) => dir === "safe"
+      ? "Domain does not overuse hyphens."
+      : `Domain has ${n(v)} hyphens, a common pattern in spoofed brand domains.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Domain contains ${n(v)} hyphens, consistent with legitimate sites.`
+      : `Domain contains ${n(v)} hyphens. Phishing domains often combine keywords with hyphens (e.g., secure-login-bank.com).`
+  },
+  path_hyphens: {
+    label: "Hyphens \"-\" in path",
+    short: (v, dir) => dir === "safe"
+      ? "Natural path slug formatting."
+      : `Path contains ${n(v)} hyphens with an unusual distribution.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Path has ${n(v)} hyphens, similar to normal article or content slugs.`
+      : `Path has ${n(v)} hyphens. The model flagged this pattern as closer to high-risk URLs.`
+  },
+  num_hyphens: {
+    label: "Total hyphens \"-\"",
+    short: (v, dir) => dir === "safe"
+      ? "Normal hyphen usage."
+      : `URL contains ${n(v)} hyphens, often used to assemble fake keywords.`,
+    detail: (v, dir) => dir === "safe"
+      ? `URL contains ${n(v)} hyphens, within normal bounds.`
+      : `URL contains ${n(v)} hyphens, commonly observed in spoofed or auto-generated links.`
+  },
+  domain_length: {
+    label: "Domain length",
+    short: (v, dir) => dir === "safe"
+      ? "Short, recognizable domain name."
+      : `Long domain name (${n(v)} chars), often stuffed with deceptive keywords.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Domain length is ${n(v)} characters, typical of established websites.`
+      : `Domain length is ${n(v)} characters. Phishing domains frequently pack brand and security terms into long hostnames.`
+  },
+  num_dots: {
+    label: "Dot \".\" count",
+    short: (v, dir) => dir === "safe"
+      ? "Simple domain separation structure."
+      : `URL contains ${n(v)} dots, often used to mimic legitimate addresses.`,
+    detail: (v, dir) => dir === "safe"
+      ? `URL contains ${n(v)} dots, showing no abnormal subdomain chaining.`
+      : `URL contains ${n(v)} dots. Extra dots often appear when attackers prepend a trusted brand name to a malicious root domain.`
+  },
+  num_query_params: {
+    label: "Query parameter count",
+    short: (v, dir) => dir === "safe"
+      ? "No excessive tracking or redirect parameters."
+      : `URL passes ${n(v)} query parameters, which may carry hidden payloads.`,
+    detail: (v, dir) => dir === "safe"
+      ? `URL has ${n(v)} query parameters, clean and concise.`
+      : `URL has ${n(v)} query parameters. Phishing links often pass victim emails, session tokens, or redirect targets via queries.`
+  },
+  longest_token_length: {
+    label: "Longest contiguous token",
+    short: (v, dir) => dir === "safe"
+      ? "URL tokens are short and readable."
+      : `Contains a long uninterrupted string (${n(v)} chars), resembling encoded data.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Longest token is ${n(v)} characters — no suspiciously long encoded strings.`
+      : `Longest token reaches ${n(v)} characters, often indicating obfuscated IDs or encoded payloads.`
+  },
+  avg_token_length: {
+    label: "Average token length",
+    short: (v, dir) => dir === "safe"
+      ? "URL segments have balanced lengths."
+      : `Unusually long average segment length (${n(v)} chars).`,
+    detail: (v, dir) => dir === "safe"
+      ? `Average token length is ${n(v)} characters, consistent with natural words.`
+      : `Average token length is ${n(v)} characters — characteristic of concatenated or machine-generated strings.`
+  },
+  num_digits: {
+    label: "Digit count",
+    short: (v, dir) => dir === "safe"
+      ? "Few digits in the URL."
+      : `Contains ${n(v)} digits, often seen in generated links or leetspeak spoofing.`,
+    detail: (v, dir) => dir === "safe"
+      ? `URL contains ${n(v)} digits, within normal levels.`
+      : `URL contains ${n(v)} digits. Attackers may substitute digits for letters (e.g., paypa1) or append random numeric strings.`
+  },
+  digit_ratio: {
+    label: "Digit ratio",
+    short: (v, dir) => dir === "safe"
+      ? "Low digit ratio; natural URL structure."
+      : `High proportion of digits (${pct(v)}), uncommon for legitimate pages.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Digits account for ${pct(v)} of the URL, within safe thresholds.`
+      : `Digits make up ${pct(v)} of the URL — typical of IP-based or auto-generated malicious URLs.`
+  },
+  letter_ratio: {
+    label: "Letter ratio",
+    short: (v, dir) => dir === "safe"
+      ? "Mostly readable alphabetic characters."
+      : `Unusual alphabetic character ratio (${pct(v)}).`,
+    detail: (v, dir) => dir === "safe"
+      ? `Letters make up ${pct(v)} of the URL, indicating a clear structure.`
+      : `Letters make up ${pct(v)} of the URL, meaning a higher share of digits or symbols than normal.`
+  },
+  special_char_ratio: {
+    label: "Special character ratio",
+    short: (v, dir) => dir === "safe"
+      ? "Minimal special characters."
+      : `Unusual proportion of special characters (${pct(v)}).`,
+    detail: (v, dir) => dir === "safe"
+      ? `Special characters are only ${pct(v)} of the URL.`
+      : `Special characters account for ${pct(v)} of the URL, which can be used to obfuscate its true structure.`
+  },
+  vowel_ratio: {
+    label: "Vowel ratio",
+    short: (v, dir) => dir === "safe"
+      ? "Natural letter composition."
+      : "Unnatural vowel distribution resembling random strings.",
+    detail: (v, dir) => dir === "safe"
+      ? `Vowel ratio is ${pct(v)}, matching natural language naming.`
+      : `Vowel ratio is ${pct(v)} — deviates from natural language, common in DGA or random tokens.`
+  },
+  consonant_ratio: {
+    label: "Consonant ratio",
+    short: (v, dir) => dir === "safe"
+      ? "Natural consonant structure."
+      : "Heavy consonant clusters resembling auto-generated strings.",
+    detail: (v, dir) => dir === "safe"
+      ? `Consonant ratio is ${pct(v)}, consistent with normal words.`
+      : `Consonant ratio is ${pct(v)} — often observed in nonsensical or machine-generated domains.`
+  },
+  has_ip_address: {
+    label: "Raw IP address host",
+    short: (v) => Number(v)
+      ? "Uses a raw IP address instead of a domain name — highly suspicious."
+      : "Uses a standard domain name instead of a raw IP address.",
+    detail: (v) => Number(v)
+      ? "The link points directly to an IP address rather than a registered domain. Legitimate services rarely ask users to log in via raw IPs."
+      : "The site uses a standard domain name."
+  },
+  is_suspicious_tld: {
+    label: "Top-Level Domain (TLD)",
+    short: (v) => Number(v)
+      ? "Uses a low-cost/free TLD (.tk, .top, .xyz...) frequently abused in phishing."
+      : "Uses a mainstream TLD.",
+    detail: (v) => Number(v)
+      ? "The domain uses a TLD commonly registered in bulk for phishing campaigns (.tk, .ml, .top, .xyz, .click...)."
+      : "The TLD belongs to standard, widely used extensions."
+  },
+  has_suspicious_word: {
+    label: "Sensitive keywords in URL",
+    short: (v) => Number(v)
+      ? "Contains sensitive keywords (login, verify, account...) commonly used to lure victims."
+      : "No suspicious login or verification keywords detected.",
+    detail: (v) => Number(v)
+      ? "Contains urgent or credential-related keywords (login, signin, verify, secure, account, banking...) — including leetspeak/homoglyph variants."
+      : "No deceptive authentication keywords were found in the URL."
+  },
+  num_underscores: {
+    label: "Underscore \"_\" count",
+    short: (v, dir) => dir === "safe"
+      ? "No unusual underscore usage."
+      : `Contains ${n(v)} underscores, less common on official sites.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Contains ${n(v)} underscores, within normal range.`
+      : `Contains ${n(v)} underscores, frequently seen in auto-generated or spoofed paths.`
+  },
+  num_question_marks: {
+    label: "Question mark \"?\" count",
+    short: (v, dir) => dir === "safe"
+      ? "Standard query syntax."
+      : `Contains ${n(v)} question marks, indicating complex queries or nested redirects.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Contains ${n(v)} question marks, simple structure.`
+      : `Contains ${n(v)} question marks, suggesting layered query strings or embedded redirect URLs.`
+  },
+  num_equals: {
+    label: "Equals \"=\" count",
+    short: (v, dir) => dir === "safe"
+      ? "No complex parameter assignments."
+      : `Contains ${n(v)} \"=\" signs, passing multiple parameter values.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Contains ${n(v)} \"=\" signs, normal for standard URLs.`
+      : `Contains ${n(v)} \"=\" signs, indicating multiple parameters or Base64-encoded strings.`
+  },
+  num_ampersands: {
+    label: "Ampersand \"&\" count",
+    short: (v, dir) => dir === "safe"
+      ? "Minimal chained parameters."
+      : `Chains multiple parameters (${n(v)} \"&\" characters).`,
+    detail: (v, dir) => dir === "safe"
+      ? `Contains ${n(v)} \"&\" characters, concise structure.`
+      : `Contains ${n(v)} \"&\" characters joining numerous sequential query parameters.`
+  },
+  num_percent: {
+    label: "Percent-encoding \"%\" count",
+    short: (v, dir) => dir === "safe"
+      ? "No suspicious percent-encoding detected."
+      : `Contains ${n(v)} \"%\" characters, which may hide obfuscated path text.`,
+    detail: (v, dir) => dir === "safe"
+      ? `Contains ${n(v)} \"%\" characters, no signs of intentional obfuscation.`
+      : `Contains ${n(v)} \"%\" characters. Attackers use %xx encoding to disguise keywords from users and filters.`
+  },
+  trusted_domain: {
+    label: "Trusted Domain (Layer 1)",
+    short: (v) => `Domain ${v} is on the verified trusted-domains list.`,
+    detail: (v) => `Root domain "${v}" is listed in Tranco Top 20,000 (excluding abused hosting/shortener platforms) or verified Vietnamese services.`
+  },
+  adversarial_userinfo: {
+    label: "Authority \"@\" Spoofing (Guardrail)",
+    short: () => "URL injects \"@\" before the real host to disguise its true destination.",
+    detail: () => "Detected userinfo@ spoofing (e.g., http://facebook.com:80@evil.tk). Browsers ignore everything before \"@\" and connect to the host after it — a classic phishing deception."
+  },
+  idn_homograph: {
+    label: "IDN / Homograph Domain (Guardrail)",
+    short: () => "Domain uses non-ASCII/Cyrillic or Punycode (xn--) characters that may spoof a brand.",
+    detail: () => "Detected non-ASCII characters or IDN Punycode (xn--...) in the hostname. Attackers replace Latin letters with visually identical Cyrillic/Greek characters (e.g., pаypal.com) to trick users."
+  }
 };
-const SUB_RED = {
-  phishing: "Link này có nhiều dấu hiệu của trang lừa đảo.",
-  malware: "Link này có nhiều dấu hiệu của trang chứa phần mềm độc hại.",
-  defacement: "Link này có nhiều dấu hiệu của trang bị can thiệp."
+
+const UI_STRINGS = {
+  vi: {
+    title: { red: "Nguy cơ cao", yellow: "Đáng ngờ", green: "Có vẻ an toàn" },
+    sub: {
+      yellow: "Link này có một vài dấu hiệu đáng ngờ. Hãy cẩn thận.",
+      green: "Chưa thấy dấu hiệu đáng ngờ trong link này."
+    },
+    subRed: {
+      phishing: "Link này có nhiều dấu hiệu của trang lừa đảo.",
+      malware: "Link này có nhiều dấu hiệu của trang chứa phần mềm độc hại.",
+      defacement: "Link này có nhiều dấu hiệu của trang bị can thiệp.",
+      fallback: "Link này có nhiều dấu hiệu bất thường, giống các trang độc hại."
+    },
+    className: {
+      benign: "lành tính",
+      phishing: "lừa đảo (phishing)",
+      malware: "phần mềm độc hại (malware)",
+      defacement: "trang bị can thiệp (defacement)"
+    },
+    checking: "Đang kiểm tra…",
+    unknown: "Không xác định",
+    reliability: (v) => `Độ tin cậy ${Math.round(v)}%`,
+    srcLabel: "Nguồn đánh giá",
+    srcWhitelist: "Danh sách tên miền uy tín (Layer 1 Whitelist)",
+    scoreLabel: "Điểm rủi ro mô hình",
+    scoreVal: (mal, rel) => `${Number(mal).toFixed(4)} (độ tin cậy ${Math.round(rel)}%)`,
+    classLabel: "Nhóm rủi ro gần nhất",
+    detailHeading: "Giải thích chi tiết các dấu hiệu:",
+    tagSafeImpact: "giảm nguy cơ",
+    tagRiskImpact: "tăng nguy cơ",
+    tagSafe: "An toàn",
+    tagRisk: "Đáng chú ý",
+    btnDetailShow: "Xem chi tiết",
+    btnDetailHide: "Ẩn chi tiết",
+    btnChatShow: "Hỏi trợ lý",
+    btnChatHide: "Ẩn trợ lý",
+    btnLeave: "Rời trang này",
+    chatPlaceholder: "Hỏi về link này hoặc cách xử lý sự cố...",
+    chatSend: "Gửi",
+    chatThinking: "Đang tra cứu RAG...",
+    chatWelcome: "Xin chào! Bạn có thể chọn câu hỏi nhanh hoặc nhập câu hỏi bất kỳ về đường link này & an toàn mạng.",
+    chatErr: "Không kết nối được trợ lý RAG lúc này. Vui lòng thử lại sau vài giây.",
+    chatChips: [
+      "Vì sao trang này bị cảnh báo?",
+      "Tôi lỡ nhập mật khẩu rồi phải làm sao?",
+      "Cách kiểm tra tên miền thật?"
+    ],
+    note: "Kết quả chỉ mang tính tham khảo.",
+    errTitle: "Không kiểm tra được",
+    errScheme: "Chỉ kiểm tra được các trang http/https.",
+    errConn: "Không kết nối được máy chủ PhishingGuard. Nếu server đang khởi động lại, vui lòng thử lại sau vài giây.",
+    measuredVal: (v) => `Giá trị đo được: ${n(v)}.`
+  },
+  en: {
+    title: { red: "High Risk", yellow: "Suspicious", green: "Looks Safe" },
+    sub: {
+      yellow: "This link shows several suspicious signals. Proceed with caution.",
+      green: "No suspicious indicators were found in this link."
+    },
+    subRed: {
+      phishing: "This link shows strong indicators of a phishing page.",
+      malware: "This link shows strong indicators of a malware site.",
+      defacement: "This link shows strong indicators of a defaced page.",
+      fallback: "This link exhibits multiple abnormal signals associated with malicious sites."
+    },
+    className: {
+      benign: "benign",
+      phishing: "phishing",
+      malware: "malware",
+      defacement: "defacement"
+    },
+    checking: "Checking…",
+    unknown: "Unknown",
+    reliability: (v) => `Reliability ${Math.round(v)}%`,
+    srcLabel: "Assessment source",
+    srcWhitelist: "Trusted Domain Whitelist (Layer 1)",
+    scoreLabel: "Model risk score",
+    scoreVal: (mal, rel) => `${Number(mal).toFixed(4)} (reliability ${Math.round(rel)}%)`,
+    classLabel: "Predicted threat class",
+    detailHeading: "Detailed SHAP & Guardrail breakdown:",
+    tagSafeImpact: "reduces risk",
+    tagRiskImpact: "increases risk",
+    tagSafe: "Safe",
+    tagRisk: "Notable",
+    btnDetailShow: "View details",
+    btnDetailHide: "Hide details",
+    btnChatShow: "Ask AI",
+    btnChatHide: "Hide AI",
+    btnLeave: "Leave this page",
+    chatPlaceholder: "Ask about this link or incident response...",
+    chatSend: "Send",
+    chatThinking: "Searching RAG knowledge base...",
+    chatWelcome: "Hi! Pick a quick question or type anything about this URL, SHAP signals, or phishing response.",
+    chatErr: "Unable to reach the RAG assistant right now. Please retry in a few seconds.",
+    chatChips: [
+      "Why was this link flagged?",
+      "I entered my password — what now?",
+      "How do I verify the real domain?"
+    ],
+    note: "For reference only — always verify sensitive URLs.",
+    errTitle: "Unable to check",
+    errScheme: "Only http:// and https:// pages can be inspected.",
+    errConn: "Cannot reach the PhishingGuard server. If the cloud instance is waking up, please retry in a few seconds.",
+    measuredVal: (v) => `Measured value: ${n(v)}.`
+  }
 };
-const CLASS_NAME = { benign: "lành tính", phishing: "lừa đảo (phishing)", malware: "phần mềm độc hại (malware)", defacement: "trang bị can thiệp (defacement)" };
+
+function getInitialLang() {
+  const param = new URLSearchParams(location.search).get("lang");
+  if (param === "en" || param === "vi") return param;
+  try {
+    const saved = localStorage.getItem("pg_lang");
+    if (saved === "en" || saved === "vi") return saved;
+  } catch (_) {}
+  return "vi";
+}
+
+let currentLang = getInitialLang();
+let lastRenderState = null;
+
+function T() { return UI_STRINGS[currentLang] || UI_STRINGS.vi; }
+function getFeatureMap() { return currentLang === "en" ? FEATURE_INFO_EN : FEATURE_INFO; }
+
+function syncStaticChrome() {
+  const t = T();
+  document.documentElement.lang = currentLang;
+  const toggle = $("lang-toggle");
+  if (toggle) toggle.textContent = currentLang.toUpperCase();
+  const note = $("note");
+  if (note) note.textContent = t.note;
+  const bl = $("btn-leave");
+  if (bl) bl.textContent = t.btnLeave;
+}
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 
 function describeShort(r) {
   const dir = r.direction || "risk";
-  const info = FEATURE_INFO[r.feature];
+  const info = getFeatureMap()[r.feature] || FEATURE_INFO[r.feature];
   return info ? info.short(r.value, dir) : `${r.feature}: ${n(r.value)}`;
 }
 
 function describeDetail(r) {
   const dir = r.direction || "risk";
-  const info = FEATURE_INFO[r.feature];
+  const info = getFeatureMap()[r.feature] || FEATURE_INFO[r.feature];
   return {
     label: info ? info.label : r.feature,
-    text: info ? info.detail(r.value, dir) : `Giá trị đo được: ${n(r.value)}.`
+    text: info ? info.detail(r.value, dir) : T().measuredVal(r.value)
   };
 }
 
@@ -331,19 +742,22 @@ function pickReasons(data, url) {
 }
 
 function render(url, data, tabId) {
+  lastRenderState = { type: "result", url, data, tabId };
+  syncStaticChrome();
+  const t = T();
   const zone = data.zone;
   $("url").textContent = url;
   $("url").title = url;
 
   const v = $("verdict");
   v.className = "verdict " + zone;
-  $("rel").textContent = "Độ tin cậy " + Math.round(data.reliability_score) + "%";
-  $("vtitle").textContent = TITLE[zone] || "Không xác định";
+  $("rel").textContent = t.reliability(data.reliability_score);
+  $("vtitle").textContent = t.title[zone] || t.unknown;
   $("vsub").textContent = zone === "red"
-    ? (SUB_RED[data.predicted_class] || "Link này có nhiều dấu hiệu bất thường, giống các trang độc hại.")
-    : (SUB[zone] || "");
+    ? (t.subRed[data.predicted_class] || t.subRed.fallback)
+    : (t.sub[zone] || "");
 
-  // 1. Phần giải thích ngắn gọn (1 câu tự nhiên kèm biểu tượng, gọn đẹp như bản thiết kế)
+  // 1. Short natural-language explanations
   const ul = $("reasons");
   ul.innerHTML = "";
   const shown = pickReasons(data, url);
@@ -357,7 +771,7 @@ function render(url, data, tabId) {
     ul.appendChild(li);
   });
 
-  // 2. Phần Xem chi tiết: giải thích chi tiết bằng tiếng Việt tương ứng từng yếu tố ở trên
+  // 2. Detailed SHAP & Guardrail breakdown
   const d = $("details");
   d.innerHTML = "";
   const meta = el("div", "d-meta");
@@ -368,11 +782,11 @@ function render(url, data, tabId) {
     meta.appendChild(p);
   };
   if (data.whitelisted) {
-    addLine("Nguồn đánh giá", "Danh sách tên miền uy tín (Layer 1 Whitelist)");
+    addLine(t.srcLabel, t.srcWhitelist);
   } else {
-    addLine("Điểm rủi ro mô hình", `${Number(data.malicious_score).toFixed(4)} (độ tin cậy ${Math.round(data.reliability_score)}%)`);
+    addLine(t.scoreLabel, t.scoreVal(data.malicious_score, data.reliability_score));
   }
-  if (data.predicted_class) addLine("Nhóm rủi ro gần nhất", CLASS_NAME[data.predicted_class] || data.predicted_class);
+  if (data.predicted_class) addLine(t.classLabel, t.className[data.predicted_class] || data.predicted_class);
   d.appendChild(meta);
 
   const detailItems = (data.reasons && data.reasons.length)
@@ -380,7 +794,7 @@ function render(url, data, tabId) {
     : shown;
 
   if (detailItems.length) {
-    d.appendChild(el("div", "d-heading", "Giải thích chi tiết các dấu hiệu:"));
+    d.appendChild(el("div", "d-heading", t.detailHeading));
     const list = el("ul", "d-list");
     detailItems.forEach((r) => {
       const isSafe = r.direction === "safe";
@@ -391,10 +805,10 @@ function render(url, data, tabId) {
       head.appendChild(el("span", "d-name", info.label));
       if (!r.synthetic && !data.whitelisted && typeof r.impact === "number") {
         const sign = (isSafe ? -1 : 1) * Math.abs(r.impact);
-        const tag = isSafe ? "giảm nguy cơ" : "tăng nguy cơ";
+        const tag = isSafe ? t.tagSafeImpact : t.tagRiskImpact;
         head.appendChild(el("span", "d-badge", `${sign > 0 ? "+" : ""}${sign.toFixed(3)} · ${tag}`));
       } else {
-        head.appendChild(el("span", "d-badge", isSafe ? "An toàn" : "Đáng chú ý"));
+        head.appendChild(el("span", "d-badge", isSafe ? t.tagSafe : t.tagRisk));
       }
       li.appendChild(head);
       li.appendChild(el("div", "d-desc", info.text));
@@ -405,11 +819,34 @@ function render(url, data, tabId) {
 
   const bd = $("btn-detail");
   bd.hidden = false;
-  bd.textContent = "Xem chi tiết";
-  bd.onclick = () => { d.hidden = !d.hidden; bd.textContent = d.hidden ? "Xem chi tiết" : "Ẩn chi tiết"; notifyHeight(); };
+  bd.textContent = d.hidden ? t.btnDetailShow : t.btnDetailHide;
+  bd.onclick = () => {
+    d.hidden = !d.hidden;
+    bd.textContent = d.hidden ? T().btnDetailShow : T().btnDetailHide;
+    notifyHeight();
+  };
+
+  const bc = $("btn-chat");
+  const cb = $("chat-box");
+  if (bc && cb) {
+    bc.hidden = false;
+    bc.textContent = cb.hidden ? t.btnChatShow : t.btnChatHide;
+    bc.onclick = () => {
+      cb.hidden = !cb.hidden;
+      bc.textContent = cb.hidden ? T().btnChatShow : T().btnChatHide;
+      if (!cb.hidden) {
+        initChatWelcome();
+        const inp = $("chat-input");
+        if (inp) inp.focus();
+      }
+      notifyHeight();
+    };
+    renderChatChrome();
+  }
 
   const bl = $("btn-leave");
   bl.hidden = zone !== "red";
+  bl.textContent = t.btnLeave;
   bl.onclick = async () => {
     if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
       chrome.runtime.sendMessage({ type: "leave", tabId });
@@ -417,6 +854,122 @@ function render(url, data, tabId) {
     closePopup();
   };
   notifyHeight();
+}
+
+const CHAT_FALLBACK_ENDPOINT = "https://phishingguard-ai43.onrender.com/chat";
+let chatInitialized = false;
+
+function renderChatChrome() {
+  const t = T();
+  const inp = $("chat-input");
+  if (inp) inp.placeholder = t.chatPlaceholder;
+  const sendBtn = $("chat-send");
+  if (sendBtn) sendBtn.textContent = t.chatSend;
+
+  const chipsWrap = $("chat-chips");
+  if (chipsWrap) {
+    chipsWrap.innerHTML = "";
+    t.chatChips.forEach((q) => {
+      const b = el("button", "chip", q);
+      b.type = "button";
+      b.onclick = () => sendChatMessage(q);
+      chipsWrap.appendChild(b);
+    });
+  }
+}
+
+function appendChatBubble(role, text, sources = []) {
+  const box = $("chat-messages");
+  if (!box) return null;
+  const div = el("div", "msg " + role);
+  // Strip simple **bold** markdown markers for clean plain-text rendering without innerHTML XSS risk
+  div.textContent = String(text || "").replace(/\*\*/g, "");
+  if (role === "bot" && Array.isArray(sources) && sources.length) {
+    const srcRow = el("div", "msg-sources");
+    const seen = new Set();
+    sources.forEach((s) => {
+      const label = s && s.source ? s.source : "";
+      if (label && !seen.has(label)) {
+        seen.add(label);
+        srcRow.appendChild(el("span", "src-tag", label));
+      }
+    });
+    if (srcRow.childNodes.length) div.appendChild(srcRow);
+  }
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  notifyHeight();
+  return div;
+}
+
+function initChatWelcome() {
+  if (chatInitialized) return;
+  chatInitialized = true;
+  appendChatBubble("bot", T().chatWelcome);
+}
+
+function requestChatApi(payload) {
+  return new Promise((resolve, reject) => {
+    if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage({ type: "chat", payload }, (resp) => {
+        if (chrome.runtime.lastError || !resp || !resp.ok) {
+          reject(new Error((resp && resp.error) || "runtime error"));
+        } else {
+          resolve(resp.data);
+        }
+      });
+      return;
+    }
+    fetch(CHAT_FALLBACK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+      .then(resolve)
+      .catch(reject);
+  });
+}
+
+async function sendChatMessage(rawText) {
+  const text = String(rawText || "").trim();
+  if (!text) return;
+  initChatWelcome();
+  appendChatBubble("user", text);
+
+  const inp = $("chat-input");
+  const sendBtn = $("chat-send");
+  if (inp) inp.value = "";
+  if (sendBtn) sendBtn.disabled = true;
+
+  const pending = appendChatBubble("bot", T().chatThinking);
+  const scanContext = (lastRenderState && lastRenderState.type === "result") ? lastRenderState.data : null;
+
+  try {
+    const data = await requestChatApi({
+      message: text,
+      lang: currentLang,
+      scan_context: scanContext
+    });
+    if (pending) pending.remove();
+    appendChatBubble("bot", data.reply || T().chatErr, data.sources || []);
+  } catch (_) {
+    if (pending) pending.remove();
+    appendChatBubble("bot", T().chatErr);
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    if (inp) inp.focus();
+  }
+}
+
+function setupChatForm() {
+  const form = $("chat-form");
+  if (!form) return;
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const inp = $("chat-input");
+    if (inp) sendChatMessage(inp.value);
+  };
 }
 
 function notifyHeight() {
@@ -443,12 +996,15 @@ if (typeof ResizeObserver !== "undefined") {
   ro.observe(document.documentElement);
 }
 
-function showError(msg, url) {
+function showError(msgKeyOrText, url, isKey = false) {
+  lastRenderState = { type: "error", msgKeyOrText, url, isKey };
+  syncStaticChrome();
+  const t = T();
   if (url) { $("url").textContent = url; $("url").title = url; }
   $("verdict").className = "verdict";
   $("rel").textContent = "";
-  $("vtitle").textContent = "Không kiểm tra được";
-  $("vsub").textContent = msg;
+  $("vtitle").textContent = t.errTitle;
+  $("vsub").textContent = isKey ? t[msgKeyOrText] : msgKeyOrText;
   notifyHeight();
 }
 
@@ -472,18 +1028,42 @@ const DEMO = {
              { feature: "path_depth", value: 2, impact: 0.4, direction: "safe" }] }
 };
 
+function setupLangToggle() {
+  const btn = $("lang-toggle");
+  if (!btn) return;
+  btn.onclick = () => {
+    currentLang = currentLang === "vi" ? "en" : "vi";
+    try { localStorage.setItem("pg_lang", currentLang); } catch (_) {}
+    syncStaticChrome();
+    if (lastRenderState) {
+      if (lastRenderState.type === "result") {
+        render(lastRenderState.url, lastRenderState.data, lastRenderState.tabId);
+      } else if (lastRenderState.type === "error") {
+        showError(lastRenderState.msgKeyOrText, lastRenderState.url, lastRenderState.isKey);
+      }
+    } else {
+      $("vtitle").textContent = T().checking;
+    }
+  };
+}
+
 async function main() {
   $("logo").innerHTML = '<img src="icons/icon48.png" alt="PhishingGuard">';
+  syncStaticChrome();
+  setupLangToggle();
+  setupChatForm();
+  $("vtitle").textContent = T().checking;
+
   const demo = new URLSearchParams(location.search).get("demo");
   if (demo && DEMO[demo]) { render(DEMO[demo].url, DEMO[demo], null); return; }
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab && tab.url;
-  if (!/^https?:\/\//i.test(url || "")) { showError("Chỉ kiểm tra được các trang http/https.", url); return; }
+  if (!/^https?:\/\//i.test(url || "")) { showError("errScheme", url, true); return; }
   $("url").textContent = url;
   chrome.runtime.sendMessage({ type: "check", url }, (resp) => {
     if (chrome.runtime.lastError || !resp || !resp.ok) {
-      showError("Không kết nối được máy chủ PhishingGuard. Nếu server đang khởi động lại, vui lòng thử lại sau vài giây.", url);
+      showError("errConn", url, true);
       return;
     }
     render(url, resp.data, tab.id);

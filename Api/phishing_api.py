@@ -1,12 +1,15 @@
 import os
+import time
+from collections import defaultdict, deque
 from itertools import islice
 from urllib.parse import urlparse
 import joblib
 import numpy as np
 import shap
-from fastapi import FastAPI
+from typing import Any, Optional
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from features import (
     extract_features,
@@ -17,6 +20,7 @@ from features import (
     has_idn_homograph,
     _parse,
 )
+from rag_assistant import answer_question, KB_DOCS
 
 # Đường dẫn tuyệt đối theo vị trí file này -> chạy từ thư mục nào cũng load được
 API_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -172,12 +176,43 @@ if _missing:
 explainer = shap.TreeExplainer(model)
 
 app = FastAPI(title="URL Phishing Detection API")
-app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                   allow_methods=["*"], allow_headers=["*"])
+
+# Cho phép cấu hình CORS chặt hơn qua biến môi trường (mặc định '*' để hỗ trợ Chrome Extension local/unpacked)
+_cors_env = os.environ.get("CORS_ALLOW_ORIGINS", "*").strip()
+_allow_origins = ["*"] if _cors_env == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_allow_origins,
+                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+
+# Rate limiter nhẹ theo IP (sliding window 60s). Đặt RATE_LIMIT_MAX_REQUESTS=0 để tắt khi benchmark.
+RATE_LIMIT_WINDOW_SEC = 60.0
+RATE_LIMIT_MAX_REQUESTS = int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", "120"))
+_rate_buckets: dict[str, deque] = defaultdict(deque)
+
+
+def _check_rate_limit(client_ip: str) -> None:
+    if RATE_LIMIT_MAX_REQUESTS <= 0:
+        return
+    now = time.monotonic()
+    bucket = _rate_buckets[client_ip]
+    cutoff = now - RATE_LIMIT_WINDOW_SEC
+    while bucket and bucket[0] < cutoff:
+        bucket.popleft()
+    if len(bucket) >= RATE_LIMIT_MAX_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please retry after a short pause.",
+        )
+    bucket.append(now)
 
 
 class Req(BaseModel):
-    url: str
+    url: str = Field(..., min_length=1, max_length=2048, description="URL cần kiểm tra (tối đa 2048 ký tự)")
+
+
+class ChatReq(BaseModel):
+    message: str = Field(..., min_length=1, max_length=500, description="Câu hỏi của người dùng")
+    lang: str = Field("vi", pattern="^(vi|en)$", description="Ngôn ngữ trả lời (vi | en)")
+    scan_context: Optional[dict[str, Any]] = Field(None, description="Kết quả /predict hiện tại (SHAP/zone)")
 
 
 def benign_shap(x):
@@ -190,16 +225,23 @@ def benign_shap(x):
 
 
 @app.post("/predict")
-def predict(req: Req):
-    norm_url = normalize_url(req.url)
-    has_at_spoof = has_adversarial_userinfo(req.url)
-    has_homograph = has_idn_homograph(req.url)
+def predict(req: Req, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
+    raw_url = req.url.strip()
+    if not raw_url:
+        raise HTTPException(status_code=422, detail="URL must not be empty or whitespace.")
+
+    norm_url = normalize_url(raw_url)
+    has_at_spoof = has_adversarial_userinfo(raw_url)
+    has_homograph = has_idn_homograph(raw_url)
 
     # Layer 1: Kiểm tra tên miền gốc (eTLD+1) trong danh sách uy tín trước khi chạy ML
-    trusted_root = get_trusted_root_domain(norm_url, raw_url=req.url)
+    trusted_root = get_trusted_root_domain(norm_url, raw_url=raw_url)
     if trusted_root is not None:
         return {
-            "url": req.url,
+            "url": raw_url,
             "normalized_url": norm_url,
             "malicious_score": 0.0,
             "reliability_score": 100.0,
@@ -217,7 +259,7 @@ def predict(req: Req):
         }
 
     # Layer 2: Phân tích đặc trưng URL bằng mô hình ML + SHAP
-    feats = extract_features(req.url)
+    feats = extract_features(raw_url)
     x = np.array([[feats[f] for f in FEATS]], dtype=float)
 
     proba = model.predict_proba(x)[0]
@@ -245,17 +287,39 @@ def predict(req: Req):
             p = proba.copy(); p[BENIGN] = -1
             label = CLASSES[int(np.argmax(p))]
 
-    # Top 3 feature đẩy điểm về phía "độc hại" (= đẩy P(benign) xuống, nên đổi dấu)
+    # Lý do giải thích: ưu tiên lý do Hard Guardrail (nếu kích hoạt) + top đặc trưng SHAP đẩy rủi ro lên
     reasons = []
+    if has_at_spoof:
+        reasons.append({
+            "feature": "adversarial_userinfo",
+            "value": 1.0,
+            "impact": 1.0,
+            "direction": "risk",
+        })
+    if has_homograph:
+        reasons.append({
+            "feature": "idn_homograph",
+            "value": 1.0,
+            "impact": 1.0,
+            "direction": "risk",
+        })
     if zone != "green":
         contrib = -benign_shap(x)
-        for i in np.argsort(contrib)[::-1][:3]:
+        remaining = max(0, 3 - len(reasons))
+        for i in np.argsort(contrib)[::-1]:
+            if remaining <= 0:
+                break
             if contrib[i] > 0:
-                reasons.append({"feature": FEATS[i], "value": float(x[0, i]),
-                                "impact": round(float(contrib[i]), 3)})
+                reasons.append({
+                    "feature": FEATS[i],
+                    "value": float(x[0, i]),
+                    "impact": round(float(contrib[i]), 3),
+                    "direction": "risk",
+                })
+                remaining -= 1
 
     return {
-        "url": req.url,
+        "url": raw_url,
         "normalized_url": norm_url,    # dạng URL thực sự đưa vào model
         "malicious_score": round(mal_score, 4),
         "reliability_score": round((1 - mal_score) * 100, 1),   # %
@@ -266,10 +330,23 @@ def predict(req: Req):
     }
 
 
+@app.post("/chat")
+def chat(req: ChatReq, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
+    msg = req.message.strip()
+    if not msg:
+        raise HTTPException(status_code=422, detail="Message must not be empty or whitespace.")
+
+    return answer_question(msg, lang=req.lang, scan_context=req.scan_context)
+
+
 @app.get("/health")
 def health():
     return {
         "status": "ok",
         "tranco_loaded": TRANCO_LOADED,
         "trusted_domains_count": len(TRUSTED_DOMAINS),
+        "rag_kb_docs": len(KB_DOCS),
     }

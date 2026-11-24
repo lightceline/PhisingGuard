@@ -59,26 +59,29 @@ PhishingGuard/
 │   ├── explainability.ipynb
 │   └── adversarial_evaluation.ipynb
 ├── Api/                                # Standalone FastAPI inference service + Docker setup
-│   ├── phishing_api.py                 # Layer 1 (Whitelist & Guardrails) + Layer 2 (LightGBM + TreeSHAP)
+│   ├── phishing_api.py                 # Layer 1 (Whitelist & Guardrails) + Layer 2 (LightGBM + TreeSHAP) + /chat
 │   ├── features.py                     # URL canonicalization, IDN/Cyrillic/Leetspeak decoding & 32 features
+│   ├── rag_assistant.py                # Lightweight TF-IDF RAG + Optional LLM Fallback Security Assistant
+│   ├── knowledge_base.json             # Bilingual (VI/EN) security & incident-response KB (NCSC/OWASP/NIST)
 │   ├── deploy_bundle.pkl               # Hardened LightGBM model + 27 selected features + thresholds
 │   ├── tranco_top20k.csv               # Tranco Top 20,000 domains
-│   ├── test_api.py                     # Automated API & adversarial test suite (5 test groups)
+│   ├── tests/test_phishing_api.py      # Automated pytest & adversarial test suite (41 tests)
+│   ├── benchmark_latency.py            # End-to-end API latency benchmark (p50/p95/p99)
 │   ├── Dockerfile
 │   └── requirements.txt
-├── Extension/                          # Chrome Extension (Manifest V3, floating rounded card UI + SHAP)
+├── Extension/                          # Chrome Extension (Manifest V3, VI/EN bilingual UI + SHAP + RAG Chatbox)
 ├── Models/                             # Trained classifiers, comparison CSVs, and final_features.json
 ├── Reports/Images/                     # EDA, Confusion Matrix, SHAP, and Adversarial evaluation figures
 ├── docker-compose.yml                  # Local / VPS one-command Docker deployment
 ├── PRIVACY.md                          # Privacy Policy for Chrome Web Store
-└── PhishingGuard-Extension-v0.1.0.zip
+└── PhishingGuard-Extension-v0.2.0.zip
 ```
 
 ---
 
 ## Live Deployment
 
-- **Cloud API (Render):** `https://phishingguard-ai43.onrender.com` (`GET /health`, `POST /predict`)
+- **Cloud API (Render):** `https://phishingguard-ai43.onrender.com` (`GET /health`, `POST /predict`, `POST /chat`)
 - **Docker Hub Image:** `docker.io/lightcelline/phishingguard-api:latest`
 
 ---
@@ -99,7 +102,7 @@ docker run -d -p 8000:7860 --name phishingguard-api lightcelline/phishingguard-a
 
 ### 2. Install Chrome Extension
 1. Open `chrome://extensions` and enable **Developer mode**.
-2. Click **Load unpacked** and select the `Extension/` folder (or upload `PhishingGuard-Extension-v0.1.0.zip` to the Chrome Web Store).
+2. Click **Load unpacked** and select the `Extension/` folder (or upload `PhishingGuard-Extension-v0.2.0.zip` to the Chrome Web Store).
 3. Click the **PhishingGuard** icon on any `http://` or `https://` page to inspect the risk score and SHAP explanations.
 
 ---

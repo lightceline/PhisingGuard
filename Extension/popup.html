@@ -9,6 +9,7 @@
     <header>
       <span class="logo" id="logo"></span>
       <span class="brand">Phishing Guard</span>
+      <button id="lang-toggle" class="lang-btn" type="button" title="Switch language / Đổi ngôn ngữ">VI</button>
     </header>
 
     <div id="url" class="urlbox"></div>
@@ -27,9 +28,20 @@
 
     <div class="actions">
       <button id="btn-detail" class="btn" hidden>Xem chi tiết</button>
+      <button id="btn-chat" class="btn btn-chat" hidden>Hỏi trợ lý</button>
       <button id="btn-leave" class="btn" hidden>Rời trang này</button>
     </div>
-    <div class="note">Kết quả chỉ mang tính tham khảo.</div>
+
+    <section id="chat-box" class="chat-box" hidden>
+      <div id="chat-chips" class="chat-chips"></div>
+      <div id="chat-messages" class="chat-messages"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" class="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Hỏi về link này hoặc cách xử lý sự cố...">
+        <button id="chat-send" class="chat-send" type="submit">Gửi</button>
+      </form>
+    </section>
+
+    <div id="note" class="note">Kết quả chỉ mang tính tham khảo.</div>
   </div>
   <script src="popup.js"></script>
 </body>

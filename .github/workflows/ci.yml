@@ -1,0 +1,36 @@
+name: PhishingGuard CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (with Git LFS for model bundle)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            Api/requirements.txt
+            Api/requirements-dev.txt
+
+      - name: Install system dependency for LightGBM
+        run: sudo apt-get update && sudo apt-get install -y libgomp1
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r Api/requirements.txt -r Api/requirements-dev.txt
+
+      - name: Run automated API & Adversarial pytest suite
+        run: pytest -v Api/tests/test_phishing_api.py

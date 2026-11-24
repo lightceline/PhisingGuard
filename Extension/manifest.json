@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PhishingGuard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cảnh báo URL lừa đảo theo thời gian thực bằng mô hình học máy có giải thích (SHAP).",
   "icons": {
     "16": "icons/icon16.png",

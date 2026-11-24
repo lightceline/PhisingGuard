@@ -14,6 +14,10 @@ body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-ra
 
 .card { padding: 14px 16px 13px; background: var(--bg); }
 header { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+.lang-btn { margin-left: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+            border-radius: 7px; padding: 2px 8px; font-size: 11px; font-weight: 600; letter-spacing: .4px;
+            cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.lang-btn:hover { background: #32343a; border-color: rgba(255, 255, 255, 0.24); }
 .logo svg, .logo img { width: 20px; height: 20px; display: block; object-fit: contain; }
 .urlbox { font: 12.5px/1.4 ui-monospace, Consolas, monospace; background: var(--surface); border: 1px solid var(--line);
           border-radius: 10px; padding: 8px 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 10px; }
@@ -64,9 +68,37 @@ header { display: flex; align-items: center; gap: 8px; color: var(--muted); font
 .details .d-item.safe .d-badge { color: var(--grn); }
 .details .d-desc { color: var(--muted); font-size: 12px; line-height: 1.45; }
 
-.actions { display: flex; gap: 10px; margin-top: 10px; }
+.actions { display: flex; gap: 8px; margin-top: 10px; }
 .btn { flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border);
-       border-radius: 10px; padding: 9px 10px; font-size: 13.5px; font-weight: 500; cursor: pointer;
-       transition: background .15s ease, border-color .15s ease; }
+       border-radius: 10px; padding: 8px 8px; font-size: 12.5px; font-weight: 500; cursor: pointer;
+       transition: background .15s ease, border-color .15s ease; white-space: nowrap; }
 .btn:hover { background: #32343a; border-color: rgba(255, 255, 255, 0.22); }
+.btn-chat { border-color: rgba(138, 180, 248, 0.35); color: #aecbfa; }
+.btn-chat:hover { background: rgba(138, 180, 248, 0.12); border-color: rgba(138, 180, 248, 0.55); }
+
+.chat-box { margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px;
+            background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.chat-box[hidden] { display: none; }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--bg); color: #aecbfa; border: 1px solid rgba(138, 180, 248, 0.28);
+        border-radius: 999px; padding: 4px 9px; font-size: 11.5px; cursor: pointer;
+        transition: background .15s ease, border-color .15s ease; text-align: left; }
+.chip:hover { background: rgba(138, 180, 248, 0.14); border-color: rgba(138, 180, 248, 0.55); }
+.chat-messages { max-height: 195px; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding-right: 2px; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 999px; }
+.msg { padding: 7px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.msg.user { align-self: flex-end; max-width: 86%; background: #2b4c7e; color: #eef4ff; border-bottom-right-radius: 3px; }
+.msg.bot { align-self: flex-start; max-width: 96%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
+.msg-sources { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.src-tag { font-size: 10.5px; color: #8ab4f8; background: rgba(138, 180, 248, 0.12);
+           border: 1px solid rgba(138, 180, 248, 0.25); border-radius: 6px; padding: 1px 6px; }
+.chat-form { display: flex; gap: 6px; }
+.chat-input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+              border-radius: 8px; padding: 7px 9px; font-size: 12px; outline: none; }
+.chat-input:focus { border-color: rgba(138, 180, 248, 0.6); }
+.chat-send { background: #2b59a2; color: #fff; border: 0; border-radius: 8px; padding: 7px 11px;
+             font-size: 12px; font-weight: 600; cursor: pointer; }
+.chat-send:hover { background: #366cc2; }
+.chat-send:disabled { opacity: 0.55; cursor: default; }
 .note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }

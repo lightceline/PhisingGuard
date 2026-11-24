@@ -13,7 +13,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=user:user phishing_api.py features.py deploy_bundle.pkl tranco_top20k.csv ./
+COPY --chown=user:user phishing_api.py features.py rag_assistant.py knowledge_base.json deploy_bundle.pkl tranco_top20k.csv ./
 
 USER user
 ENV PORT=7860

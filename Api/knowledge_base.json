@@ -1,0 +1,128 @@
+[
+  {
+    "id": "ir_password_exposed",
+    "source": "NCSC UK & OWASP",
+    "keywords": "lỡ nhập mật khẩu password lộ tài khoản đăng nhập nhầm compromised account change password 2fa",
+    "title_vi": "Xử lý khẩn cấp khi lỡ nhập mật khẩu trên trang lừa đảo",
+    "title_en": "Immediate steps if you entered your password on a phishing site",
+    "content_vi": "1) Đổi ngay mật khẩu của tài khoản đó bằng cách tự gõ địa chỉ trang chính thức (không bấm lại link cũ). 2) Nếu bạn dùng chung mật khẩu này cho email, ngân hàng hoặc mạng xã hội khác, hãy đổi hết ngay lập tức. 3) Bật xác thực 2 lớp (2FA) bằng ứng dụng Authenticator và chọn 'Đăng xuất khỏi tất cả thiết bị' trong phần cài đặt bảo mật.",
+    "content_en": "1) Immediately change your password by manually typing the official website address (never reuse the suspicious link). 2) Change the password on any other accounts where you reused it. 3) Enable 2FA (Authenticator app preferred) and use 'Sign out of all active sessions' in security settings."
+  },
+  {
+    "id": "ir_bank_otp_card",
+    "source": "NIST SP 800-61 & VNCERT",
+    "keywords": "lỡ nhập otp thẻ ngân hàng tài khoản ngân hàng chuyển tiền mất tiền credit card bank account cvv",
+    "title_vi": "Xử lý khi lỡ nhập thông tin thẻ ngân hàng hoặc mã OTP",
+    "title_en": "What to do if you shared bank card details or an OTP",
+    "content_vi": "1) Khóa thẻ tạm thời ngay trên ứng dụng ngân hàng hoặc gọi hotline in ở mặt sau thẻ (không gọi số điện thoại hiện trên trang web lạ). 2) Yêu cầu ngân hàng rà soát và chặn giao dịch đáng ngờ gần nhất. 3) Chụp màn hình đường link và lịch sử giao dịch để làm bằng chứng trình báo nếu phát sinh mất tiền.",
+    "content_en": "1) Freeze or lock your card immediately via your official banking app or the hotline printed on the back of your card. 2) Ask your bank to monitor or dispute unauthorized transactions. 3) Save screenshots of the phishing URL and timestamps in case you need to file a fraud report."
+  },
+  {
+    "id": "ir_clicked_link_only",
+    "source": "CISA Phishing Guidance",
+    "keywords": "chỉ mới bấm link chưa nhập gì click link an toàn không có bị hack không clicked phishing link",
+    "title_vi": "Lỡ bấm vào link lừa đảo nhưng chưa nhập thông tin gì",
+    "title_en": "Clicked a phishing link without entering any information",
+    "content_vi": "Nếu bạn chỉ mới mở trang mà KHÔNG nhập mật khẩu, KHÔNG tải/chạy file và trình duyệt đã cập nhật mới nhất, rủi ro thường ở mức thấp. Hãy đóng ngay tab đó, xóa cookie/dữ liệu của trang web đó trong trình duyệt và không bấm lại vào đường link.",
+    "content_en": "If you only opened the page without entering credentials or downloading/running any files—and your browser is up to date—risk is generally low. Close the tab immediately, clear site cookies/data, and avoid revisiting the link."
+  },
+  {
+    "id": "ir_malware_download",
+    "source": "NCSC UK & CISA",
+    "keywords": "tải file cài đặt phần mềm độc hại malware apk exe zip virus trojan downloaded suspicious file",
+    "title_vi": "Lỡ tải hoặc chạy tệp tin đáng ngờ (Malware)",
+    "title_en": "If you downloaded or ran a suspicious file (Malware)",
+    "content_vi": "1) Nếu mới tải về chưa mở: xóa ngay tệp tin đó và dọn thùng rác. 2) Nếu đã lỡ chạy file (.exe, .apk, .msi, macro): ngắt kết nối Internet (Wi-Fi/4G) ngay để chặn mã độc gửi dữ liệu ra ngoài. 3) Quét toàn bộ hệ thống bằng Windows Defender hoặc phần mềm diệt virus uy tín, sau đó đổi mật khẩu các tài khoản quan trọng từ một thiết bị sạch khác.",
+    "content_en": "1) If downloaded but not opened: delete the file immediately and empty Recycle Bin/Trash. 2) If executed (.exe, .apk, .msi, macro): disconnect from Wi-Fi/network immediately to stop data exfiltration. 3) Run a full antivirus scan (e.g., Windows Defender) and reset sensitive passwords from a separate clean device."
+  },
+  {
+    "id": "attack_userinfo_spoof",
+    "source": "OWASP & PhishingGuard Guardrail",
+    "keywords": "userinfo @ ký tự a còng giả mạo địa chỉ port facebook.com@ authority spoofing at sign",
+    "title_vi": "Kỹ thuật giả mạo địa chỉ bằng ký tự '@' (Userinfo Spoofing)",
+    "title_en": "Authority '@' Spoofing (Userinfo Attack)",
+    "content_vi": "Trong chuẩn URL (RFC 3986), phần đứng trước dấu '@' là thông tin đăng nhập (userinfo), còn máy chủ thực sự trình duyệt kết nối là phần đứng SAU dấu '@'. Ví dụ: 'http://facebook.com:80@evil.tk' sẽ đưa bạn tới 'evil.tk' chứ không phải Facebook. PhishingGuard có lớp Hard Guardrail tự động chặn và báo đỏ mọi URL chứa dạng giả mạo này.",
+    "content_en": "Under RFC 3986, text before '@' in a URL authority is treated as userinfo, while the browser actually connects to the host AFTER '@'. For example, 'http://facebook.com:80@evil.tk' leads to 'evil.tk', not Facebook. PhishingGuard's Hard Guardrail automatically flags this pattern as High Risk."
+  },
+  {
+    "id": "attack_idn_homograph",
+    "source": "OWASP & Unicode Security",
+    "keywords": "xn-- punycode cyrillic homograph ký tự đồng dạng tên miền giả mạo unicode idn",
+    "title_vi": "Tấn công đồng dạng ký tự IDN / Cyrillic (Homograph Attack)",
+    "title_en": "IDN / Cyrillic Homograph & Punycode (xn--) Attack",
+    "content_vi": "Kẻ tấn công thay chữ cái Latin bằng ký tự Cyrillic hoặc Hy Lạp trông giống hệt (ví dụ chữ 'а' tiếng Nga trong 'pаypal.com'). Trình duyệt mã hóa tên miền này thành Punycode bắt đầu bằng 'xn--'. PhishingGuard tự động giải mã Punycode và kích hoạt Guardrail báo đỏ để bảo vệ người dùng khỏi bẫy thị giác.",
+    "content_en": "Attackers replace Latin letters with visually identical Cyrillic or Greek characters (e.g., Cyrillic 'а' in 'pаypal.com'), which browsers encode into Punycode starting with 'xn--'. PhishingGuard decodes Punycode labels and triggers a High Risk guardrail to prevent visual spoofing."
+  },
+  {
+    "id": "attack_open_redirect",
+    "source": "OWASP Top 10",
+    "keywords": "open redirect chuyển hướng google.com/url?q= link lồng link rút gọn nested url",
+    "title_vi": "Tấn công chuyển hướng mở (Open Redirect)",
+    "title_en": "Open Redirect Exploitation",
+    "content_vi": "Kẻ xấu lợi dụng đường dẫn chuyển hướng của trang lớn (như 'google.com/url?q=http://evil.tk') để đánh lừa bộ lọc whitelist và mắt người dùng. PhishingGuard tự động bóc tách URL đích bên trong tham số query (?q=, ?url=, ?u=), từ chối whitelist trang trung gian và đưa thẳng URL đích vào mô hình AI kiểm tra.",
+    "content_en": "Attackers abuse redirect endpoints on trusted sites (e.g., 'google.com/url?q=http://evil.tk') to bypass whitelists and fool users. PhishingGuard unwraps nested redirect URLs from query parameters (?q=, ?url=, ?u=), rejects whitelisting, and evaluates the true destination with ML."
+  },
+  {
+    "id": "attack_subdomain_spoofing",
+    "source": "PhishingGuard Layer 1 Architecture",
+    "keywords": "subdomain tên miền phụ tên miền thật etld+1 kiểm tra tên miền chính hãng verify root domain",
+    "title_vi": "Cách nhận biết tên miền thật (eTLD+1) và chống giả mạo Subdomain",
+    "title_en": "How to identify the true root domain (eTLD+1) and spot subdomain spoofing",
+    "content_vi": "Tên miền thật luôn nằm ngay trước dấu '/' đầu tiên (tính từ đuôi .com, .vn, .com.vn ngược về 1 bậc). Ví dụ trong 'secure-login.paypal.com.verify-account.tk/signin', tên miền thật là 'verify-account.tk' (KHÔNG phải paypal.com). Layer 1 của PhishingGuard chỉ so khớp đúng tên miền gốc (eTLD+1) nên subdomain giả không bao giờ lọt vào whitelist.",
+    "content_en": "The true root domain is always right before the first '/' (one label left of the public suffix like .com or .com.vn). In 'secure-login.paypal.com.verify-account.tk/signin', the real host is 'verify-account.tk', NOT paypal.com. PhishingGuard Layer 1 strictly matches eTLD+1 so spoofed subdomains are never whitelisted."
+  },
+  {
+    "id": "attack_abused_hosting",
+    "source": "PhishingGuard Layer 1 Policy",
+    "keywords": "netlify.app github.io vercel.app sites.google.com bit.ly hosting miễn phí rút gọn link abused platform",
+    "title_vi": "Vì sao link netlify.app, github.io, bit.ly không nằm trong Whitelist?",
+    "title_en": "Why netlify.app, github.io, sites.google.com, and bit.ly are excluded from Whitelist",
+    "content_vi": "Các nền tảng hosting miễn phí, form builder và rút gọn link (netlify.app, github.io, vercel.app, sites.google.com, bit.ly, blogspot...) thường xuyên bị kẻ xấu lợi dụng để dựng trang đăng nhập giả mạo có sẵn chứng chỉ HTTPS. Vì vậy PhishingGuard chủ động loại bỏ hơn 75 nền tảng này khỏi danh sách Tranco Top 20k để mọi URL dạng này bắt buộc đi qua mô hình ML đánh giá.",
+    "content_en": "Free static hosts, form builders, and URL shorteners (netlify.app, github.io, sites.google.com, bit.ly, blogspot...) are heavily abused to host HTTPS phishing pages. PhishingGuard explicitly excludes 75+ abused platforms from its Tranco Top 20k whitelist so every such URL is inspected by the ML layer."
+  },
+  {
+    "id": "xai_shap_entropy",
+    "source": "PhishingGuard XAI (SHAP)",
+    "keywords": "shap entropy là gì độ ngẫu nhiên giải thích mô hình impact tăng nguy cơ giảm nguy cơ feature",
+    "title_vi": "Giải thích chỉ số SHAP và Độ ngẫu nhiên (Entropy) trong PhishingGuard",
+    "title_en": "Understanding SHAP impact scores and URL/Domain Entropy",
+    "content_vi": "SHAP (SHapley Additive exPlanations) đo mức đóng góp của từng đặc trưng URL vào điểm rủi ro: giá trị dương (+ tăng nguy cơ) kéo dự đoán về phía độc hại, giá trị âm (- giảm nguy cơ) kéo về phía an toàn. Entropy (Shannon entropy) đo mức độ rối/ngẫu nhiên của chuỗi ký tự — tên miền lừa đảo sinh tự động thường có entropy cao hơn tên thương hiệu quen thuộc.",
+    "content_en": "SHAP (SHapley Additive exPlanations) quantifies each URL feature's contribution to the risk score: positive values increase risk, while negative values push toward safe. Shannon entropy measures character randomness—auto-generated or obfuscated phishing domains typically exhibit higher entropy than familiar brands."
+  },
+  {
+    "id": "system_zones_thresholds",
+    "source": "PhishingGuard Layer 2 Architecture",
+    "keywords": "vùng xanh vàng đỏ ngưỡng threshold 0.58 0.72 độ tin cậy reliability score malicious score lightgbm",
+    "title_vi": "Ý nghĩa 3 vùng cảnh báo Xanh – Vàng – Đỏ và Ngưỡng rủi ro",
+    "title_en": "Meaning of Green, Yellow, and Red risk zones and thresholds",
+    "content_vi": "PhishingGuard dùng mô hình LightGBM (27 đặc trưng tối ưu theo SHAP) kết hợp 2 ngưỡng: Vùng Xanh (điểm rủi ro < 0.58, có vẻ an toàn), Vùng Vàng (0.58 – 0.72, đáng ngờ — nên kiểm tra kỹ trước khi nhập thông tin), và Vùng Đỏ (>= 0.72, nguy cơ cao — hiển thị banner cảnh báo và nút Rời trang này). Độ tin cậy (%) = (1 - điểm rủi ro) × 100.",
+    "content_en": "PhishingGuard uses an adversarially hardened LightGBM classifier (27 SHAP-selected features) with two thresholds: Green (risk < 0.58, looks safe), Yellow (0.58–0.72, suspicious—verify before entering data), and Red (>= 0.72, high risk—triggers a top warning banner and Leave button). Reliability (%) = (1 - risk score) × 100."
+  },
+  {
+    "id": "system_privacy_data",
+    "source": "PhishingGuard Privacy Policy",
+    "keywords": "quyền riêng tư bảo mật dữ liệu thu thập mật khẩu lịch sử cookie privacy policy gdpr data",
+    "title_vi": "PhishingGuard có thu thập mật khẩu hay lịch sử duyệt web không?",
+    "title_en": "Does PhishingGuard collect passwords or browsing history?",
+    "content_vi": "KHÔNG. Theo nguyên tắc tối thiểu hóa dữ liệu (Data Minimization), PhishingGuard chỉ gửi duy nhất chuỗi URL của tab đang mở để tính điểm rủi ro theo thời gian thực; tuyệt đối không đọc nội dung trang, ô mật khẩu hay cookie, và không lưu lịch sử duyệt web vào cơ sở dữ liệu. Cache cục bộ trong trình duyệt tự động xóa khi bạn đóng trình duyệt.",
+    "content_en": "NO. Following Data Minimization principles, PhishingGuard sends only the active tab's URL for real-time stateless scoring. It never reads page DOM content, passwords, or cookies, and stores no browsing history on the server. Session cache clears automatically when the browser closes."
+  },
+  {
+    "id": "system_false_positive",
+    "source": "PhishingGuard Evaluation & Limitations",
+    "keywords": "báo nhầm false positive trang an toàn bị báo đỏ vàng kiểm tra lại cách xác minh",
+    "title_vi": "Làm gì khi nghi ngờ hệ thống báo nhầm (False Positive)?",
+    "title_en": "What if a legitimate website is flagged (False Positive)?",
+    "content_vi": "Vì PhishingGuard phân tích thuần túy dựa trên cấu trúc URL (URL-only), một số trang web hợp pháp nhưng ít phổ biến hoặc có đường dẫn dài chứa nhiều ký tự mã hóa/tham số có thể bị xếp vào vùng Vàng hoặc Đỏ. Hãy bấm 'Xem chi tiết' để kiểm tra tên miền gốc, tự tìm tên tổ chức trên Google để đối chiếu, và chỉ nhập thông tin nhạy cảm khi chắc chắn 100%.",
+    "content_en": "Because PhishingGuard relies purely on URL-based features, uncommon legitimate sites with long encoded paths or many parameters may occasionally trigger Yellow or Red alerts. Click 'View details' to inspect the SHAP reasons, verify the official domain via a search engine, and only enter sensitive data when 100% sure."
+  },
+  {
+    "id": "attack_leetspeak_encoding",
+    "source": "PhishingGuard Adversarial Defense",
+    "keywords": "leetspeak paypa1 %xx percent encoding mã hóa ký tự từ khóa nhạy cảm obfuscation",
+    "title_vi": "Kỹ thuật né bộ lọc bằng Leetspeak (paypa1) và Mã hóa %xx",
+    "title_en": "Evasion via Leetspeak (paypa1) and URL Percent-Encoding (%xx)",
+    "content_vi": "Kẻ lừa đảo thường thay chữ bằng số (như 'paypa1', 'l0g1n') hoặc mã hóa đường dẫn thành dạng '%6c%6f%67%69%6e' để đánh lừa bộ lọc truyền thống. PhishingGuard thực hiện giải mã Percent-Encoding nhiều lớp và chuẩn hóa Leetspeak/Homoglyph trước khi trích xuất đặc trưng nên vẫn phát hiện chính xác các từ khóa nhạy cảm bị che giấu.",
+    "content_en": "Attackers substitute digits for letters (e.g., 'paypa1', 'l0g1n') or percent-encode paths ('%6c%6f%67%69%6e') to evade basic filters. PhishingGuard performs multi-pass %xx decoding and Leetspeak/homoglyph normalization before feature extraction to catch obfuscated phishing keywords."
+  }
+]

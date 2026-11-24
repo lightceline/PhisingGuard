@@ -2,6 +2,7 @@
 // Không gán cứng ngưỡng: vùng xanh/vàng/đỏ do API quyết định (trường "zone").
 
 const API = "https://phishingguard-ai43.onrender.com/predict";
+const CHAT_API = "https://phishingguard-ai43.onrender.com/chat";
 const COLORS = { red: "#d93025", yellow: "#f9ab00", green: "#188038" };
 const BADGE_TEXT = { red: "!", yellow: "?", green: "OK" };
 
@@ -107,7 +108,9 @@ function toggleFloatingPopup(iframeUrl) {
   const onKeyDown = (e) => {
     if (e.key === "Escape") close();
   };
+  const expectedOrigin = new URL(iframeUrl).origin;
   const onMessage = (e) => {
+    if (e.origin !== expectedOrigin) return;
     if (!e.data || typeof e.data !== "object") return;
     if (e.data.type === "pg-close") {
       close();
@@ -139,6 +142,16 @@ chrome.action.onClicked.addListener((tab) => {
     .catch(() => {});
 });
 
+async function askAssistant(payload) {
+  const res = await fetch(CHAT_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error("Chat API trả về mã " + res.status);
+  return await res.json();
+}
+
 // Popup hỏi kết quả qua message để dùng chung cache.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === "check") {
@@ -146,6 +159,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then((data) => sendResponse({ ok: true, data }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true; // phản hồi bất đồng bộ
+  }
+  if (msg && msg.type === "chat") {
+    askAssistant(msg.payload)
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
   }
   if (msg && msg.type === "leave") {
     const tid = msg.tabId ?? (sender.tab && sender.tab.id);
