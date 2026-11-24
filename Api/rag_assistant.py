@@ -245,24 +245,45 @@ def _try_llm_synthesis(
 
     try:
         if gemini_key:
-            model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
-            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
-            payload = {
-                "system_instruction": {"parts": [{"text": system_prompt}]},
-                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 300},
-            }
-            req = urllib.request.Request(
-                endpoint,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-                text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-                if text:
-                    return text, "gemini"
+            env_model = os.environ.get("GEMINI_MODEL", "").strip()
+            candidate_models = [env_model] if env_model else ["gemini-2.5-flash", "gemini-2.0-flash"]
+            is_vertex_express = gemini_key.startswith("AQ.")
+
+            for model_name in candidate_models:
+                if is_vertex_express:
+                    endpoint = (
+                        f"https://aiplatform.googleapis.com/v1/publishers/google/models/"
+                        f"{model_name}:generateContent?key={gemini_key}"
+                    )
+                    payload = {
+                        "systemInstruction": {"parts": [{"text": system_prompt}]},
+                        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 350},
+                    }
+                else:
+                    endpoint = (
+                        f"https://generativelanguage.googleapis.com/v1beta/models/"
+                        f"{model_name}:generateContent?key={gemini_key}"
+                    )
+                    payload = {
+                        "system_instruction": {"parts": [{"text": system_prompt}]},
+                        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 350},
+                    }
+                try:
+                    req = urllib.request.Request(
+                        endpoint,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        body = json.loads(resp.read().decode("utf-8"))
+                        text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        if text:
+                            return text, "gemini"
+                except (urllib.error.URLError, KeyError, IndexError, TimeoutError, ValueError):
+                    continue
 
         if openai_key:
             model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
