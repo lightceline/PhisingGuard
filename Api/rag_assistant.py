@@ -246,30 +246,27 @@ def _try_llm_synthesis(
     try:
         if gemini_key:
             env_model = os.environ.get("GEMINI_MODEL", "").strip()
-            candidate_models = [env_model] if env_model else ["gemini-2.5-flash", "gemini-2.0-flash"]
-            is_vertex_express = gemini_key.startswith("AQ.")
+            candidate_models = (
+                [env_model]
+                if env_model
+                else [
+                    "gemini-flash-latest",
+                    "gemini-flash-lite-latest",
+                    "gemini-3.8-flash",
+                    "gemini-3.5-flash-lite",
+                ]
+            )
 
             for model_name in candidate_models:
-                if is_vertex_express:
-                    endpoint = (
-                        f"https://aiplatform.googleapis.com/v1/publishers/google/models/"
-                        f"{model_name}:generateContent?key={gemini_key}"
-                    )
-                    payload = {
-                        "systemInstruction": {"parts": [{"text": system_prompt}]},
-                        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-                        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 350},
-                    }
-                else:
-                    endpoint = (
-                        f"https://generativelanguage.googleapis.com/v1beta/models/"
-                        f"{model_name}:generateContent?key={gemini_key}"
-                    )
-                    payload = {
-                        "system_instruction": {"parts": [{"text": system_prompt}]},
-                        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-                        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 350},
-                    }
+                endpoint = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{model_name}:generateContent?key={gemini_key}"
+                )
+                payload = {
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400},
+                }
                 try:
                     req = urllib.request.Request(
                         endpoint,
