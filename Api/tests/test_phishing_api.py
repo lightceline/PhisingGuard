@@ -228,6 +228,28 @@ def test_chat_off_topic_guardrail_refuses_unrelated_queries(monkeypatch):
     assert data["retrieved_count"] == 0
 
 
+@pytest.mark.parametrize(
+    "msg,lang,expected_doc_id",
+    [
+        ("path là gì", "vi", "concept_url_path"),
+        ("what is path", "en", "concept_url_path"),
+        ("query là gì", "vi", "concept_url_query_params"),
+        ("https có chắc chắn an toàn không", "vi", "concept_url_anatomy"),
+        ("defacement là gì", "vi", "concept_threat_classes"),
+        ("what is TLD", "en", "concept_ip_and_tld"),
+    ],
+)
+def test_chat_answers_short_url_and_security_concepts(monkeypatch, msg, lang, expected_doc_id):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    resp = client.post("/chat", json={"message": msg, "lang": lang})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["mode"] == "rag_extractive"
+    assert any(s["id"] == expected_doc_id for s in data["sources"]), f"Got {data['sources']} for '{msg}'"
+
+
 def test_chat_validation_and_url_prompt_sanitization():
     from rag_assistant import sanitize_url_for_prompt
 

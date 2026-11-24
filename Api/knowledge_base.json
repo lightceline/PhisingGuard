@@ -124,5 +124,50 @@
     "title_en": "Evasion via Leetspeak (paypa1) and URL Percent-Encoding (%xx)",
     "content_vi": "Kẻ lừa đảo thường thay chữ bằng số (như 'paypa1', 'l0g1n') hoặc mã hóa đường dẫn thành dạng '%6c%6f%67%69%6e' để đánh lừa bộ lọc truyền thống. PhishingGuard thực hiện giải mã Percent-Encoding nhiều lớp và chuẩn hóa Leetspeak/Homoglyph trước khi trích xuất đặc trưng nên vẫn phát hiện chính xác các từ khóa nhạy cảm bị che giấu.",
     "content_en": "Attackers substitute digits for letters (e.g., 'paypa1', 'l0g1n') or percent-encode paths ('%6c%6f%67%69%6e') to evade basic filters. PhishingGuard performs multi-pass %xx decoding and Leetspeak/homoglyph normalization before feature extraction to catch obfuscated phishing keywords."
+  },
+  {
+    "id": "concept_url_path",
+    "source": "RFC 3986 & PhishingGuard XAI",
+    "keywords": "path đường dẫn path_length path_depth path_hyphens slug thư mục sau tên miền what is path",
+    "title_vi": "Đường dẫn (Path) trong URL là gì?",
+    "title_en": "What is a URL Path?",
+    "content_vi": "Path (đường dẫn) là phần nằm ngay sau tên miền (bắt đầu từ dấu '/' đầu tiên đến trước dấu '?' hoặc '#'), ví dụ trong 'https://example.com/bank/login/verify' thì '/bank/login/verify' là Path. Path chỉ định trang hoặc thư mục cụ thể trên máy chủ. Trong phát hiện phishing, kẻ tấn công thường tạo Path rất sâu (nhiều cấp '/'), dài bất thường hoặc nhồi từ khóa (SEO slug stuffing) để che giấu trang giả mạo.",
+    "content_en": "A URL Path is the part right after the domain name (from the first '/' up to '?' or '#'), e.g., '/bank/login/verify' in 'https://example.com/bank/login/verify'. It specifies the resource or directory on the server. Attackers often use deeply nested paths, unusually long paths, or keyword-stuffed slugs to disguise phishing pages."
+  },
+  {
+    "id": "concept_url_query_params",
+    "source": "RFC 3986 & OWASP",
+    "keywords": "query tham số truy vấn parameter fragment dấu hỏi dấu bằng & # ? = what is query",
+    "title_vi": "Tham số truy vấn (Query) và Fragment (#) trong URL là gì?",
+    "title_en": "What are Query Parameters (?) and Fragments (#) in a URL?",
+    "content_vi": "Query (chuỗi truy vấn) là phần bắt đầu sau dấu '?' gồm các cặp khóa=giá_trị nối nhau bởi dấu '&' (vd: '?id=123&redirect=http://evil.tk'). Fragment là phần sau dấu '#' trỏ tới một vị trí trong trang. Kẻ lừa đảo thường lợi dụng Query để truyền sẵn email nạn nhân, mã phiên giả hoặc nhúng link chuyển hướng độc hại (Open Redirect).",
+    "content_en": "A Query string starts after '?' and contains key=value pairs separated by '&' (e.g., '?id=123&url=http://evil.tk'). A Fragment follows '#' and points to a page section. Phishing links frequently abuse query parameters to pre-fill victim emails, carry obfuscated tokens, or hide Open Redirect targets."
+  },
+  {
+    "id": "concept_url_anatomy",
+    "source": "MDN & NCSC UK",
+    "keywords": "url là gì domain tên miền scheme https http ssl chứng chỉ ổ khóa port cấu trúc url what is url domain https",
+    "title_vi": "Cấu trúc một URL gồm những phần nào? HTTPS có chắc chắn an toàn không?",
+    "title_en": "URL Anatomy (Scheme, Domain, TLD, Port) & Does HTTPS mean safe?",
+    "content_vi": "Một URL chuẩn gồm: Scheme (http/https) + Tên miền (Subdomain + Domain gốc + TLD như .com/.vn) + Port (tùy chọn, vd :8080) + Path (/...) + Query (?...). Lưu ý quan trọng: có HTTPS (biểu tượng ổ khóa) KHÔNG đảm bảo trang web an toàn — phần lớn trang lừa đảo hiện nay đều dùng chứng chỉ SSL miễn phí. Đó là lý do PhishingGuard chuẩn hóa bỏ thiên lệch HTTPS và đánh giá sâu cấu trúc tên miền + đường dẫn.",
+    "content_en": "A standard URL consists of: Scheme (http/https) + Host (Subdomain + Root Domain + TLD like .com/.vn) + optional Port + Path (/...) + Query (?...). Important: HTTPS (the padlock icon) only encrypts traffic—it does NOT mean a site is legitimate, since most modern phishing sites use free SSL certificates."
+  },
+  {
+    "id": "concept_threat_classes",
+    "source": "PhishingGuard 4-Class Model",
+    "keywords": "phishing là gì malware là gì defacement là gì benign lành tính phân loại lừa đảo mã độc can thiệp giao diện",
+    "title_vi": "Phân biệt 4 nhóm: Benign, Phishing, Malware và Defacement",
+    "title_en": "Difference between Benign, Phishing, Malware, and Defacement",
+    "content_vi": "PhishingGuard phân loại URL thành 4 lớp: 1) Benign: trang web sạch, an toàn. 2) Phishing (Lừa đảo): trang giả mạo ngân hàng/mạng xã hội để đánh cắp mật khẩu, OTP, thẻ. 3) Malware (Phần mềm độc hại): trang phát tán virus, trojan hoặc tệp thực thi nguy hiểm. 4) Defacement (Bị can thiệp): trang web hợp pháp nhưng đã bị tin tặc xâm nhập và chỉnh sửa nội dung trái phép.",
+    "content_en": "PhishingGuard classifies URLs into 4 classes: 1) Benign: clean, safe websites. 2) Phishing: deceptive pages mimicking trusted brands to steal passwords, OTPs, or cards. 3) Malware: pages distributing viruses, trojans, or malicious downloads. 4) Defacement: legitimate websites compromised and altered by attackers."
+  },
+  {
+    "id": "concept_ip_and_tld",
+    "source": "OWASP & PhishingGuard Features",
+    "keywords": "tld đuôi tên miền .tk .xyz .top .ml địa chỉ ip has_ip_address is_suspicious_tld what is tld",
+    "title_vi": "Đuôi tên miền (TLD) và Địa chỉ IP trực tiếp trong URL là gì?",
+    "title_en": "What are Top-Level Domains (TLDs) and Raw IP URLs?",
+    "content_vi": "TLD (Top-Level Domain) là phần đuôi cuối cùng của tên miền như '.com', '.vn', '.org'. Một số TLD miễn phí hoặc cực rẻ (.tk, .ml, .ga, .xyz, .top, .click...) thường bị kẻ xấu đăng ký hàng loạt để lừa đảo. Tương tự, việc dùng trực tiếp địa chỉ IP (vd: 'http://192.168.1.50/login') thay vì tên miền đăng ký là dấu hiệu rủi ro rất cao vì các dịch vụ uy tín hầu như không bao giờ làm vậy.",
+    "content_en": "A TLD (Top-Level Domain) is the final suffix of a domain such as '.com', '.vn', or '.org'. Low-cost or free TLDs (.tk, .ml, .xyz, .top, .click...) are disproportionately abused in phishing campaigns. Similarly, using a raw IP address (e.g., 'http://185.x.x.x/login') instead of a registered domain is a strong malicious indicator."
   }
 ]

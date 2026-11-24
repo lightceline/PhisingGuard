@@ -26,9 +26,13 @@ with open(KB_PATH, "r", encoding="utf-8") as _f:
 
 
 def _build_corpus_text(doc: dict) -> str:
+    # Repeat titles and keywords so short conceptual queries (e.g. "path là gì", "what is TLD") match strongly
     return " ".join([
         doc.get("title_vi", ""),
+        doc.get("title_vi", ""),
         doc.get("title_en", ""),
+        doc.get("title_en", ""),
+        doc.get("keywords", ""),
         doc.get("keywords", ""),
         doc.get("content_vi", ""),
         doc.get("content_en", ""),
@@ -36,6 +40,20 @@ def _build_corpus_text(doc: dict) -> str:
 
 
 _CORPUS = [_build_corpus_text(d) for d in KB_DOCS]
+
+# Precomputed keyword token sets for short-query exact-term boosting (excluding generic stopwords)
+_STOPWORDS = {
+    "là", "la", "gì", "gi", "của", "cua", "và", "va", "có", "co", "không", "khong",
+    "này", "nay", "cho", "tôi", "toi", "bị", "bi", "thế", "the", "nào", "nao", "như", "nhu",
+    "what", "is", "are", "the", "a", "an", "in", "on", "of", "to", "for", "do", "does", "how", "why",
+}
+_DOC_KW_TOKENS: list[set[str]] = [
+    {
+        tok for tok in re.findall(r"[a-z0-9_À-ỹ.%@#-]+", d.get("keywords", "").lower())
+        if len(tok) >= 2 and tok not in _STOPWORDS
+    }
+    for d in KB_DOCS
+]
 
 # Hybrid word + character n-gram TF-IDF handles both English and Vietnamese (with/without diacritics)
 _WORD_VEC = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, lowercase=True)
@@ -113,6 +131,18 @@ def retrieve_kb(query: str, top_k: int = 2, min_score: float = 0.10) -> list[tup
     w_sim = cosine_similarity(_WORD_VEC.transform([q]), _WORD_MAT)[0]
     c_sim = cosine_similarity(_CHAR_VEC.transform([q]), _CHAR_MAT)[0]
     scores = 0.55 * w_sim + 0.45 * c_sim
+
+    # Short-query exact keyword boost (e.g., "path là gì", "what is TLD", "https là gì")
+    q_tokens = {
+        tok for tok in re.findall(r"[a-z0-9_À-ỹ.%@#-]+", q.lower())
+        if len(tok) >= 2 and tok not in _STOPWORDS
+    }
+    if q_tokens:
+        for idx, kw_set in enumerate(_DOC_KW_TOKENS):
+            overlap = len(q_tokens & kw_set)
+            if overlap > 0:
+                scores[idx] += min(0.24, 0.12 * overlap)
+
     ranked = np.argsort(scores)[::-1]
     results = []
     for idx in ranked[:top_k]:

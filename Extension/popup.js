@@ -698,6 +698,10 @@ function syncStaticChrome() {
   if (note) note.textContent = t.note;
   const bl = $("btn-leave");
   if (bl) bl.textContent = t.btnLeave;
+  const bc = $("btn-chat");
+  const cb = $("chat-box");
+  if (bc && cb) bc.textContent = cb.hidden ? t.btnChatShow : t.btnChatHide;
+  renderChatChrome();
 }
 
 const $ = (id) => document.getElementById(id);
@@ -878,10 +882,8 @@ function renderChatChrome() {
   }
 }
 
-function appendChatBubble(role, text, sources = []) {
-  const box = $("chat-messages");
-  if (!box) return null;
-  const div = el("div", "msg " + role);
+function fillBubbleContent(div, role, text, sources = []) {
+  div.innerHTML = "";
   // Strip simple **bold** markdown markers for clean plain-text rendering without innerHTML XSS risk
   div.textContent = String(text || "").replace(/\*\*/g, "");
   if (role === "bot" && Array.isArray(sources) && sources.length) {
@@ -896,6 +898,15 @@ function appendChatBubble(role, text, sources = []) {
     });
     if (srcRow.childNodes.length) div.appendChild(srcRow);
   }
+}
+
+function appendChatBubble(role, text, sources = [], meta = {}) {
+  const box = $("chat-messages");
+  if (!box) return null;
+  const div = el("div", "msg " + role);
+  if (meta.roleTag) div.dataset.roleTag = meta.roleTag;
+  if (meta.query) div.dataset.query = meta.query;
+  fillBubbleContent(div, role, text, sources);
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
   notifyHeight();
@@ -905,7 +916,43 @@ function appendChatBubble(role, text, sources = []) {
 function initChatWelcome() {
   if (chatInitialized) return;
   chatInitialized = true;
-  appendChatBubble("bot", T().chatWelcome);
+  appendChatBubble("bot", T().chatWelcome, [], { roleTag: "welcome" });
+}
+
+async function syncChatMessagesLanguage() {
+  const box = $("chat-messages");
+  if (!box) return;
+  const welcomeEl = box.querySelector('[data-role-tag="welcome"]');
+  if (welcomeEl) {
+    fillBubbleContent(welcomeEl, "bot", T().chatWelcome);
+  }
+
+  const botReplies = Array.from(box.querySelectorAll(".msg.bot[data-query]"));
+  if (!botReplies.length) {
+    notifyHeight();
+    return;
+  }
+
+  const scanContext = (lastRenderState && lastRenderState.type === "result") ? lastRenderState.data : null;
+  const targetLang = currentLang;
+  await Promise.all(
+    botReplies.map(async (bubble) => {
+      const q = bubble.dataset.query;
+      if (!q) return;
+      try {
+        const data = await requestChatApi({
+          message: q,
+          lang: targetLang,
+          scan_context: scanContext
+        });
+        // Only apply if user hasn't switched language again while awaiting
+        if (currentLang === targetLang) {
+          fillBubbleContent(bubble, "bot", data.reply || T().chatErr, data.sources || []);
+        }
+      } catch (_) {}
+    })
+  );
+  notifyHeight();
 }
 
 function requestChatApi(payload) {
@@ -952,10 +999,10 @@ async function sendChatMessage(rawText) {
       scan_context: scanContext
     });
     if (pending) pending.remove();
-    appendChatBubble("bot", data.reply || T().chatErr, data.sources || []);
+    appendChatBubble("bot", data.reply || T().chatErr, data.sources || [], { query: text });
   } catch (_) {
     if (pending) pending.remove();
-    appendChatBubble("bot", T().chatErr);
+    appendChatBubble("bot", T().chatErr, [], { query: text });
   } finally {
     if (sendBtn) sendBtn.disabled = false;
     if (inp) inp.focus();
@@ -1044,6 +1091,7 @@ function setupLangToggle() {
     } else {
       $("vtitle").textContent = T().checking;
     }
+    syncChatMessagesLanguage();
   };
 }
 
