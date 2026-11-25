@@ -266,3 +266,54 @@ def test_chat_validation_and_url_prompt_sanitization():
     assert "victim@a.com" not in sanitized
     assert "ignore_previous_instructions" not in sanitized
     assert sanitized.endswith("?<redacted>")
+
+
+def test_chat_retrieves_auto_loaded_markdown_kb_docs(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    resp = client.post(
+        "/chat",
+        json={"message": "Có người gọi bảo cài app VNeID file apk qua Zalo có phải lừa đảo không?", "lang": "vi"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["mode"] == "rag_extractive"
+    assert any(s["id"].startswith("md_vn_phishing_patterns_") for s in data["sources"])
+    assert ".gov.vn" in data["reply"]
+
+
+def test_chat_siliconflow_openai_compatible_routing(monkeypatch):
+    import io
+    import json as _json
+    import urllib.request
+
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://api.siliconflow.cn/v1")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-dummy")
+    monkeypatch.setenv("OPENAI_MODEL", "deepseek-ai/DeepSeek-V3")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    captured = {}
+
+    class _FakeResp(io.BytesIO):
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+
+    def _fake_urlopen(req, timeout=15):
+        captured["url"] = req.full_url
+        captured["auth"] = req.get_header("Authorization")
+        captured["body"] = _json.loads(req.data.decode("utf-8"))
+        payload = {"choices": [{"message": {"content": "Trả lời tổng hợp từ DeepSeek-V3 [NCSC UK]."}}]}
+        return _FakeResp(_json.dumps(payload).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+
+    resp = client.post("/chat", json={"message": "Làm sao nhận biết link lừa đảo?", "lang": "vi"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["mode"] == "rag_llm_siliconflow"
+    assert "DeepSeek-V3" in data["reply"]
+    assert captured["url"] == "https://api.siliconflow.cn/v1/chat/completions"
+    assert captured["body"]["model"] == "deepseek-ai/DeepSeek-V3"

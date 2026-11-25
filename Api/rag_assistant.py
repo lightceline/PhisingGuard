@@ -20,9 +20,72 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 API_DIR = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(API_DIR, "knowledge_base.json")
+KB_DOCS_DIR = os.path.join(API_DIR, "kb_docs")
+
+
+def _load_markdown_kb_docs(kb_dir: str) -> list[dict]:
+    """Automatically load additional Markdown (.md) files from Api/kb_docs/,
+    chunked by '##' headings, so new security knowledge can be added without editing JSON.
+    """
+    docs: list[dict] = []
+    if not os.path.isdir(kb_dir):
+        return docs
+    for fname in sorted(os.listdir(kb_dir)):
+        if not fname.lower().endswith(".md") or fname.lower() == "readme.md":
+            continue
+        fpath = os.path.join(kb_dir, fname)
+        if not os.path.isfile(fpath):
+            continue
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                raw = f.read().strip()
+        except OSError:
+            continue
+        if not raw:
+            continue
+
+        stem = os.path.splitext(fname)[0]
+        source = stem
+        m_src = re.match(r"^Source:\s*(.+)$", raw, flags=re.IGNORECASE | re.MULTILINE)
+        if m_src:
+            source = m_src.group(1).strip()
+            raw = re.sub(r"^Source:\s*.+$", "", raw, count=1, flags=re.IGNORECASE | re.MULTILINE).strip()
+
+        sections = re.split(r"(?m)^##\s+", raw)
+        idx = 0
+        for sec in sections:
+            sec = sec.strip()
+            if not sec:
+                continue
+            lines = sec.splitlines()
+            title = lines[0].strip("# ").strip()
+            rest_lines = lines[1:] if len(lines) > 1 else []
+            kw = ""
+            cleaned_body_lines = []
+            for ln in rest_lines:
+                m_kw = re.match(r"^Keywords:\s*(.+)$", ln.strip(), flags=re.IGNORECASE)
+                if m_kw:
+                    kw = (kw + " " + m_kw.group(1).strip()).strip()
+                else:
+                    cleaned_body_lines.append(ln)
+            body = "\n".join(cleaned_body_lines).strip() if cleaned_body_lines else sec
+            if not body:
+                continue
+            idx += 1
+            docs.append({
+                "id": f"md_{stem}_{idx}",
+                "source": source,
+                "keywords": kw,
+                "title_vi": title,
+                "title_en": title,
+                "content_vi": body,
+                "content_en": body,
+            })
+    return docs
+
 
 with open(KB_PATH, "r", encoding="utf-8") as _f:
-    KB_DOCS: list[dict] = json.load(_f)
+    KB_DOCS: list[dict] = json.load(_f) + _load_markdown_kb_docs(KB_DOCS_DIR)
 
 
 def _build_corpus_text(doc: dict) -> str:
@@ -243,57 +306,23 @@ def _try_llm_synthesis(
         f"User question: {message}"
     )
 
-    try:
-        if gemini_key:
-            env_model = os.environ.get("GEMINI_MODEL", "").strip()
-            candidate_models = (
-                [env_model]
-                if env_model
-                else [
-                    "gemini-flash-latest",
-                    "gemini-flash-lite-latest",
-                    "gemini-3.8-flash",
-                    "gemini-3.5-flash-lite",
-                ]
-            )
-
-            for model_name in candidate_models:
-                endpoint = (
-                    f"https://generativelanguage.googleapis.com/v1beta/models/"
-                    f"{model_name}:generateContent?key={gemini_key}"
-                )
-                payload = {
-                    "system_instruction": {"parts": [{"text": system_prompt}]},
-                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400},
-                }
-                try:
-                    req = urllib.request.Request(
-                        endpoint,
-                        data=json.dumps(payload).encode("utf-8"),
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req, timeout=12) as resp:
-                        body = json.loads(resp.read().decode("utf-8"))
-                        text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-                        if text:
-                            return text, "gemini"
-                except (urllib.error.URLError, KeyError, IndexError, TimeoutError, ValueError):
-                    continue
-
-        if openai_key:
-            model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-            endpoint = "https://api.openai.com/v1/chat/completions"
-            payload = {
-                "model": model_name,
-                "temperature": 0.2,
-                "max_tokens": 300,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            }
+    # 1) OpenAI-compatible provider (SiliconFlow DeepSeek-V3 / DeepSeek-R1 / OpenAI / Groq / OpenRouter)
+    # Prioritized when OPENAI_API_KEY is configured so SiliconFlow takes precedence over fallback keys.
+    if openai_key:
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/")
+        model_name = os.environ.get("OPENAI_MODEL", "deepseek-ai/DeepSeek-V3" if "siliconflow" in base_url.lower() else "gpt-4o-mini").strip()
+        endpoint = f"{base_url}/chat/completions"
+        provider_tag = "siliconflow" if "siliconflow" in base_url.lower() else "openai"
+        payload = {
+            "model": model_name,
+            "temperature": 0.2,
+            "max_tokens": 400,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        try:
             req = urllib.request.Request(
                 endpoint,
                 data=json.dumps(payload).encode("utf-8"),
@@ -303,13 +332,53 @@ def _try_llm_synthesis(
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
                 text = body["choices"][0]["message"]["content"].strip()
                 if text:
-                    return text, "openai"
-    except (urllib.error.URLError, KeyError, IndexError, TimeoutError, ValueError):
-        return None, None
+                    return text, provider_tag
+        except (urllib.error.URLError, KeyError, IndexError, TimeoutError, ValueError):
+            pass
+
+    # 2) Google Gemini Flash fallback (AI Studio)
+    if gemini_key:
+        env_model = os.environ.get("GEMINI_MODEL", "").strip()
+        candidate_models = (
+            [env_model]
+            if env_model
+            else [
+                "gemini-flash-latest",
+                "gemini-flash-lite-latest",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash-lite",
+            ]
+        )
+
+        for model_name in candidate_models:
+            endpoint = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model_name}:generateContent?key={gemini_key}"
+            )
+            payload = {
+                "system_instruction": {"parts": [{"text": system_prompt}]},
+                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400},
+            }
+            try:
+                req = urllib.request.Request(
+                    endpoint,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                    text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    if text:
+                        return text, "gemini"
+            except (urllib.error.URLError, KeyError, IndexError, TimeoutError, ValueError):
+                continue
+
     return None, None
 
 
