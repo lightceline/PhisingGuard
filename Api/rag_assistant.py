@@ -108,6 +108,7 @@ _CORPUS = [_build_corpus_text(d) for d in KB_DOCS]
 _STOPWORDS = {
     "là", "la", "gì", "gi", "của", "cua", "và", "va", "có", "co", "không", "khong",
     "này", "nay", "cho", "tôi", "toi", "bị", "bi", "thế", "the", "nào", "nao", "như", "nhu",
+    "công", "cong", "thức", "nhất", "cách", "một", "các",
     "what", "is", "are", "the", "a", "an", "in", "on", "of", "to", "for", "do", "does", "how", "why",
 }
 _DOC_KW_TOKENS: list[set[str]] = [
