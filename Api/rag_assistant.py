@@ -290,7 +290,14 @@ def _try_llm_synthesis(
         for doc, _ in retrieved
     )
 
-    lang_instruction = "Reply clearly and concisely in English (max 160 words)." if lang == "en" else "Trả lời tự nhiên, rõ ràng và ngắn gọn bằng tiếng Việt (tối đa 170 từ)."
+    lang_instruction = (
+        "CRITICAL OUTPUT LANGUAGE RULE: You MUST write your ENTIRE response strictly in natural English (max 160 words), "
+        "even if the user's question or the retrieved knowledge base snippets are written in Vietnamese. "
+        "Always translate Vietnamese context into natural English."
+        if lang == "en"
+        else "QUY TẮC NGÔN NGỮ BẮT BUỘC: Bạn PHẢI viết TOÀN BỘ câu trả lời bằng tiếng Việt tự nhiên, rõ ràng (tối đa 170 từ), "
+        "ngay cả khi câu hỏi của người dùng hoặc tài liệu truy xuất là tiếng Anh."
+    )
     system_prompt = (
         "You are PhishingGuard Security Assistant, a cybersecurity & URL-safety expert inside a Chrome Extension. "
         "Prioritize the provided scan context (SHAP/Guardrail) and retrieved security knowledge base when answering, "
@@ -300,11 +307,17 @@ def _try_llm_synthesis(
         "If the user asks something completely unrelated to cybersecurity, URLs, or PhishingGuard (e.g., cooking recipes, weather), politely decline. "
         + lang_instruction
     )
+    output_lang_footer = (
+        "Required output language: English only (translate any Vietnamese text above into English)."
+        if lang == "en"
+        else "Ngôn ngữ trả lời bắt buộc: Chỉ dùng Tiếng Việt (dịch mọi nội dung tiếng Anh ở trên sang tiếng Việt)."
+    )
     user_prompt = (
         f"Sanitized URL: {safe_url}\n"
         f"{scan_summary}\n\n"
         f"Retrieved Knowledge Base:\n{kb_context or '(none)'}\n\n"
-        f"User question: {message}"
+        f"User question: {message}\n"
+        f"{output_lang_footer}"
     )
 
     # 1) OpenAI-compatible provider (SiliconFlow DeepSeek-V3 / DeepSeek-R1 / OpenAI / Groq / OpenRouter)
