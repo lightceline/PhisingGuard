@@ -1,9 +1,17 @@
 # Backup snapshots (tránh đẩy nhầm ~1 GB lên Git LFS)
 Backup/
 
+# Local report documentation for NotebookLM (bên ngoài codebase)
+Project_Documentation/
+
 # Python cache & virtual environments
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 .ipynb_checkpoints/
+
+# Environment variables & local secrets (giữ lại .env.example làm mẫu)
+.env
+.env.*
+!.env.example
